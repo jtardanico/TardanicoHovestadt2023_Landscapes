@@ -51,23 +51,8 @@ end
 #---------------------
 
 function expected_fert(T_opt,T_sd,H_opt,H_sd,Fert_max, temp_t, habitat, α_t, α_h, t_ref, trend)
-    #println("T_opt = $T_opt")
-    #println("T_sd = $T_sd")
-    #println("H_opt = $H_opt")
-    #println("H_sd = $H_sd")
-    #println("Fert_max = $Fert_max")
-    #println("temp_t = $temp_t")
-    #println("habitat = $habitat")
-    #println("α = $α_t")
-    #println("trend = $trend")
     temp = temp_t + t_ref + trend # Patch temperature
-    #println("temp_t + t_ref = $temp")
-    #println("exp(-(temp-T_opt)^2/(2*T_sd^2)) = ", exp(-(temp-T_opt)^2/(2*T_sd^2)))
-    #println("exp(-(habitat-H_opt)^2/(2*H_sd^2)) = ", exp(-(habitat-H_opt)^2/(2*H_sd^2)))
-    #println("exp((-T_sd)^2/2*α_t^2) = ", exp((-T_sd)^2/2*α_t^2))
-    #println("exp((-H_sd)^2/2*α_h^2) = ", exp((-H_sd)^2/2*α_h^2))
     e_fert = Fert_max * exp(-(temp-T_opt)^2/(2*T_sd^2)) * exp(-(habitat-H_opt)^2/(2*H_sd^2)) * exp(-T_sd^2/2*α_t^2) * exp(-H_sd^2/2*α_h^2)
-    #println(e_fert)
     return e_fert
 end
 
@@ -735,6 +720,7 @@ end
 # simulation parameters. Loops over 4 climate trends.
 function simulation_run2(parasource::String,worldtempsource::String,worldenvsource::String)
     par = include(parasource)
+    bmax = par["bmax"]
     tmax = par["tmax"]
     α = par["α2"]
     T_ref = par["T_ref"]
@@ -745,7 +731,16 @@ function simulation_run2(parasource::String,worldtempsource::String,worldenvsour
         init_world(worldtempsource,worldenvsource)
         generate_climate_trend(tmax,0,1,s)
         init_spp2()
-        println("Starting time loop.")
+        println("Starting burn-in period.")
+        for b in 1:bmax
+            println("Beginning timestep $b.")
+            #println("Starting dispersal routine.")
+            dispersal!(landscape)
+            #println("Starting reproduction routine.")
+            demographics(landscape,α,T_ref,trend[1],300)
+            #println("End timestep $t.")
+        end
+        println("Starting ")
         for t in 1:tmax
             println("Beginning timestep $t.")
             #println("Starting dispersal routine.")

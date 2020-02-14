@@ -1,5 +1,6 @@
 Dict{String,Any}(
-"tmax" => 50,
+"bmax" => 50, # Number of timesteps in burn-in period
+"tmax" => 50, # Number of timesteps in Simulation_Run
 "T_ref" => 12.5,
 "α0" => 0,
 "α1" => 1,
