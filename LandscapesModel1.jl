@@ -25,9 +25,9 @@ using StatsBase
 # Input Files
 #--------------------------
 
-parasource = "/home/joseph/Documents/PhD/Landklif Model/Alpha/ParameterDict1.jl"
-worldtempsource = "/home/joseph/Documents/PhD/Landklif Model/Alpha/Landscape Files/150-0.3-0.txt"#file name
-worldenvsource = "/home/joseph/Documents/PhD/Landklif Model/Alpha/Landscape Files/150-0.3-0.5.txt"#file name
+parasource = "/home/joseph/github/LandKlifModel/ParameterDict1.jl"
+worldtempsource = "/home/joseph/Documents/PhD/Landklif Model/Landscapes/Model1/Landscape Files/Test Landscape 1 Autocorrelated/150-0.3-0.txt"#file name
+worldenvsource = "/home/joseph/Documents/PhD/Landklif Model/Landscapes/Model1/Landscape Files/Test Landscape 1 Autocorrelated/150-0.3-0.5.txt"#file name
 
 #---------------------
 # Objects
@@ -135,7 +135,7 @@ end
 # Creates a 1x9 array listing species traits. For use with function "simulation_run2"
 function init_spp2()
     #println("Initializing species master list...")
-    n_traits = 9
+    n_traits = 10
     global species_list = Array{Any,2}(undef,1,n_traits)
         ID = 1              # Trait 1: Species ID number
         T_opt = "10-30" #8+22 # Trait 2: Temperature optimum
@@ -146,7 +146,8 @@ function init_spp2()
         Disp_g = "random"       # Trait 7: Global dispersal probability
         Fert_max = "5-30"       # Trait 8: Maximum number of offspring
         dispersed = "N/A"   # Trait 9: Whether or not individual has already dispersed
-        global species_list[1,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed]
+        lineage = "N/A"    # Trait 10: Lineage identifier
+        global species_list[1,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage]
 end
 
 # Initialization of species populations
@@ -170,7 +171,7 @@ end
 
 # Initialized a population of individuals with randomized trait values
 function init_pops2(n_pop::Int)
-    n_traits = 9
+    n_traits = 10
     patchpop = Array{Array{Float32,2},1}(undef,1)
     population = Array{Float32,2}(undef,n_pop,n_traits)
     for i in 1:n_pop
@@ -183,7 +184,8 @@ function init_pops2(n_pop::Int)
         Disp_g = rand()       # Trait 7: Global dispersal probability
         Fert_max = rand(5:30)       # Trait 8: Maximum number of offspring
         dispersed = false   # Trait 9: Whether or not individual has already dispersed
-        population[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed]
+        lineage = abs(rand(Int)) # Trait 10: Lineage identifier
+        population[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage]
     end
     patchpop[1] = population
     return patchpop
@@ -434,28 +436,17 @@ function dispersal!(landscape::Array{TPatch,2})
                         while l < length(landscape[i,j].species[k][1:end,1])
                             l += 1
                             d_local = rand()
-                            d_global = rand()
+                            #d_global = rand()
                             #println("Individual $l: d_local = $d_local, d_global = $d_global")
                             if landscape[i,j].species[k][l,9] == false
-                                if d_local<landscape[i,j].species[k][l,6] # Trait 6: Local dispersal probability
-                                    #println("Individua $l: d_local < Disp_l")
-                                    trow_l, tcol_l, outofbounds_l = get_target_local(nrows,ncols,i,j)
-                                    disperse_local(trow_l,tcol_l,outofbounds_l,i,j,k,l)
-                                elseif d_global<landscape[i,j].species[k][l,7] # Trait 7: Global dispersal probability
-                                    #println("Individual $l: d_global < Disp_g")
-                                    trow_g, tcol_g, outofbounds_g = get_target_global(nrows,ncols,i,j)
-                                    disperse_global(trow_g,tcol_g,outofbounds_g,i,j,k,l)
-                                elseif d_local<landscape[i,j].species[k][l,6] && d_global<landscape[i,j].species[k][l,7]
-                                    #println("Individual $l: d_local < Disp_l & d_global > Disp_g")
-                                    #println("Flipping a coin...")
-                                    if rand()>0.5
-                                        #println("Heads!")
-                                        trow_l, tcol_l, outofbounds_l = get_target_local(nrows,ncols,i,j)
-                                        disperse_local(trow_l,tcol_l,outofbounds_l,i,j,k,l)
-                                    else
-                                        #println("Tails!")
+                                if d_local<=landscape[i,j].species[k][l,6] # Check vs. dispersal probability (trait 6)
+                                    d_global = rand()
+                                    if d_global <= landscape[i,j].species[k][l,7] # Check vs. global dispersal probability (trait 7)
                                         trow_g, tcol_g, outofbounds_g = get_target_global(nrows,ncols,i,j)
                                         disperse_global(trow_g,tcol_g,outofbounds_g,i,j,k,l)
+                                    else
+                                        trow_l, tcol_l, outofbounds_l = get_target_local(nrows,ncols,i,j)
+                                        disperse_local(trow_l,tcol_l,outofbounds_l,i,j,k,l)
                                     end
                                 end
                             end
@@ -596,14 +587,14 @@ function write_landscape_csv(landscape,timestep,scenario,directory,filename)
     rows = length(landscape[1:end,1])
     cols = length(landscape[1,1:end])
     n_species = length(landscape[1,1].species[1:end,1])
-    col_names = ["ID" "Timestep" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "temp_t" "precip_t" "habitat"]
+    col_names = ["ID" "Timestep" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "LineageID" "temp_t" "precip_t" "habitat"]
     open(outputname, "a") do IO
         writedlm(IO, col_names)
         for i in 1:rows
             for j in 1:cols
                 for k in 1:n_species
                     for l in 1:length(landscape[i,j].species[k][1:end,1])
-                        writedlm(IO, [k timestep i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] landscape[i,j].temp_t landscape[i,j].precip_t landscape[i,j].habitat])
+                        writedlm(IO, [k timestep i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] landscape[i,j].species[k][l,10] landscape[i,j].temp_t landscape[i,j].precip_t landscape[i,j].habitat])
                     end
                 end
             end
@@ -779,28 +770,7 @@ simulation_run2(parasource,worldtempsource,worldenvsource)
 #----------------------------------------------
 # Code Testing Grounds
 #----------------------------------------------
-exp(-(2+2)^2)
-
-a = 9.622739/8
-exp(a)
-
-T_opt = 29.621933
-T_sd = 9.622739
-H_opt = 0.61566573
-H_sd = 0.98449486
-Fert_max = 30.0
-temp_t = 0.6627365
-habitat = 0.54409885
-α = 2
-trend = 0.0
-temp_t + t_ref = 13.162736475467682
-
-exp(-(7.92214)^2/2*2^2)
-
-a = (-7.92214)^2
-b = a/8
-exp(b)
-
+abs(rand(Int))
 
 
 par = include(parasource)
