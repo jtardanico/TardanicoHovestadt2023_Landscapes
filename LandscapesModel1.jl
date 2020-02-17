@@ -684,6 +684,7 @@ end
 # Run simulation with automatically generated landscape. Loops over 4 climate trends.
 # 10 species populations.
 function simulation_run1(parasource::String)
+    bmax = par["bmax"]
     tmax = par["tmax"]
     α = par["α2"]
     T_ref = par["T_ref"]
@@ -696,6 +697,15 @@ function simulation_run1(parasource::String)
         println("Initializing world.")
         generate_world(50,50)
         generate_climate_trend(tmax,0,1,s)
+        println("Starting burn-in period.")
+        for b in 1:bmax
+            println("Beginning timestep $b.")
+            #println("Starting dispersal routine.")
+            dispersal!(landscape)
+            #println("Starting reproduction routine.")
+            demographics(landscape,α,T_ref,trend[1],300)
+            #println("End timestep $t.")
+        end
         println("Starting time loop.")
         for t in 1:tmax
             println("Beginning timestep $t.")
