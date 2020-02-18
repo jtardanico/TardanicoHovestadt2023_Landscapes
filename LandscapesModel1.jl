@@ -494,6 +494,7 @@ end
 
 # Calculates trait value means for each patch in the landscape and outputs a 3d array with dimensions
 # rows by cols by n_traits.
+# Note: This function could be more elegantly written. Consider rewriting this function.
 function trait_analysis(landscape::Array{TPatch,2})
     #println("Trait Analysis")
     rows = length(landscape[1:end,1])
@@ -511,21 +512,27 @@ function trait_analysis(landscape::Array{TPatch,2})
         for i in 1:rows
             #println("Row = $i")
             for j in 1:cols
-                #println("Col = $j")
-                for p in 1:n_species
-                    #println("Species = $p")
-                    weights[p] = length(landscape[i,j].species[p][1:end,1])
-                    #println("Weight = $(length(landscape[i,j].species[p][1:end,1]))")
-                    if length(landscape[i,j].species[p][1:end,1]) > 0
-                        means[p] = mean(landscape[i,j].species[p][1:end,k+1])
-                        #println("Mean = $(means[p])")
-                    else
-                        means[p] = 0
-                        #println("Mean = $(means[p])")
-                    end
-                end # End species loop
+                if n_species > 1
+                    #println("Col = $j")
+                    for p in 1:n_species
+                        #println("Species = $p")
+                        weights[p] = length(landscape[i,j].species[p][1:end,1])
+                        #println("Weight = $(length(landscape[i,j].species[p][1:end,1]))")
+                        if length(landscape[i,j].species[p][1:end,1]) > 0
+                            means[p] = mean(landscape[i,j].species[p][1:end,k+1])
+                            #println("Mean = $(means[p])")
+                        else
+                            means[p] = 0
+                            #println("Mean = $(means[p])")
+                        end
+                    end # End species loop
+                end
                 #println("Weighted mean = $(weightedmean(means,weights))")
-                mean_traits_values[i,j] = weightedmean(means,weights)
+                if n_species > 1
+                    mean_traits_values[i,j] = weightedmean(means,weights)
+                else
+                    mean_traits_values[i,j] = mean(landscape[i,j].species[p][1:end,k+1])
+                end
             end # End col loop
         end # End row loop
         global trait_means[k] = mean_traits_values
@@ -560,6 +567,33 @@ function env_analysis(landscape::Array{TPatch,2},trend_t)
     end
     global temperatures = temperatures
     global habitat = habitat
+end
+
+function mean_stress(landscape::Array{TPatch,2})
+    rows = length(landscape[1:end,1])
+    cols = length(landscape[1,1:end])
+    n_species = length(species_list[1:end,1])
+    means = Array{Float32,1}(undef,n_species)
+    weights = Array{Int,1}(undef,n_species)
+    stress = Array{Float32,2}(undef,rows,cols)
+    for i in 1:rows
+        for j in 1:cols
+            for k in 1:n_species
+                if n_species > 1
+                    for p in 1:n_species
+                        weights[p] = length(landscape[i,j].species[p][1:end,1])
+                        if length(landscape[i,j].species[p][1:end,1]) > 0
+                            means[p] = mean(landscape[i,j].species[p][1:end,k+1])
+                            #println("Mean = $(means[p])")
+                        else
+                            means[p] = 0
+                            #println("Mean = $(means[p])")
+                        end
+                    end
+                end
+            end
+        end
+    end
 end
 
 # Currently broken
