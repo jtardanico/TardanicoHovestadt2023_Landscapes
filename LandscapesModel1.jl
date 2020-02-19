@@ -13,6 +13,7 @@ Pkg.add("Plotly")
 Pkg.add("StatsBase")
 Pkg.add("Distributions")
 Pkg.add("ArgParse")
+Pkg.add()
 
 using Distributions
 using ArgParse
@@ -89,6 +90,8 @@ function weightedmean(means,weights)
     wm = sum(means .* weights)/sum(weights)
     return wm
 end
+
+
 
 #-------------------------
 # Data Input Functions
@@ -182,7 +185,7 @@ function init_pops2(n_pop::Int)
         H_sd = rand() # Trait 5: Habitat tolerance
         Disp_l = rand()      # Trait 6: Local dispersal probability
         Disp_g = rand()       # Trait 7: Global dispersal probability
-        Fert_max = rand(5:30)       # Trait 8: Maximum number of offspring
+        Fert_max = 15       # Trait 8: Maximum number of offspring
         dispersed = false   # Trait 9: Whether or not individual has already dispersed
         lineage = abs(rand(Int)) # Trait 10: Lineage identifier
         population[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage]
@@ -569,31 +572,32 @@ function env_analysis(landscape::Array{TPatch,2},trend_t)
     global habitat = habitat
 end
 
-function mean_stress(landscape::Array{TPatch,2})
+# Calculates unweighted mean stress
+function mean_stress(landscape::Array{TPatch,2},T_ref, trend)
     rows = length(landscape[1:end,1])
     cols = length(landscape[1,1:end])
     n_species = length(species_list[1:end,1])
-    means = Array{Float32,1}(undef,n_species)
-    weights = Array{Int,1}(undef,n_species)
-    stress = Array{Float32,2}(undef,rows,cols)
+    stress_t = Array{Float32,2}(undef,rows,cols) # Temperature stress
+    stress_h = Array{Float32,2}(undef,rows,cols) # Habitat stress
+    stress_o = Array{Float32,2}(undef,rows,cols) # Overall stress
     for i in 1:rows
         for j in 1:cols
-            for k in 1:n_species
-                if n_species > 1
-                    for p in 1:n_species
-                        weights[p] = length(landscape[i,j].species[p][1:end,1])
-                        if length(landscape[i,j].species[p][1:end,1]) > 0
-                            means[p] = mean(landscape[i,j].species[p][1:end,k+1])
-                            #println("Mean = $(means[p])")
-                        else
-                            means[p] = 0
-                            #println("Mean = $(means[p])")
-                        end
-                    end
-                end
+            for p in 1:n_species
+                S_T, S_H = stress.(landscape[i,j].species[p][1:end,2], # Calculating environmental stress for a species in a patch
+                           landscape[i,j].species[p][1:end,3],
+                           landscape[i,j].species[p][1:end,4],
+                           landscape[i,j].species[p][1:end,5],
+                           landscape[i,j].temp_t,
+                           landscape[i,j].habitat,
+                           T_ref, trend)
+                S_O = (S_T .* S_H) # Calculate overall stress
+                stress_t[i,j] = mean(S_T)
+                stress_h[i,j] = mean(S_H)
+                stress_o[i,j] = mean(S_O)
             end
         end
     end
+    return stress_t,stress_h,stress_o
 end
 
 # Currently broken
@@ -804,8 +808,9 @@ simulation_run2(parasource,worldtempsource,worldenvsource)
 #----------------------------------------------
 # Code Testing Grounds
 #----------------------------------------------
-abs(rand(Int))
-
+a = [1,2,3,4,5,6]
+b = [2,3,4,5,6,7]
+(a .+ b) ./ 2
 
 par = include(parasource)
 tmax = par["tmax"]
