@@ -10,5 +10,5 @@ Dict{String,Any}(
 "α4" => 4,
 "α5" => 5,
 "initial_pop" => 10,
-"dir" => "/home/joseph/Documents/PhD/Landklif Model/Landscapes/Model1/Test Output/Test 1",
+"dir" => "/home/joseph/Documents/PhD/Landklif Model/Landscapes/Model1/Test Output 2/Uniform Landscape",
 )
