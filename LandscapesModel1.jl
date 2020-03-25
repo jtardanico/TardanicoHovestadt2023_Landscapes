@@ -50,7 +50,7 @@ end
 
 function expected_fert(T_opt,T_sd,H_opt,H_sd,Fert_max, temp_t, habitat, α_t, α_h, t_ref, trend)
     temp = temp_t + t_ref + trend # Patch temperature
-    e_fert = Fert_max * exp(-(temp-T_opt)^2/(2*T_sd^2)) * exp(-(habitat-H_opt)^2/(2*H_sd^2)) * exp(-T_sd^2/2*α_t^2) * exp(-H_sd^2/2*α_h^2)
+    e_fert = Fert_max * exp(-(temp-T_opt)^2/(2*T_sd^2)) * exp(-(habitat-H_opt)^2/(2*H_sd^2)) * exp(-T_sd^2/(2*α_t^2)) * exp(-H_sd^2/(2*α_h^2))
     return e_fert
 end
 
@@ -205,8 +205,8 @@ function init_pops2(n_pop::Int)
         ID = i              # Trait 1: Species ID number
         T_opt = rand()*20+10 #8+22 # Trait 2: Temperature optimum
         T_sd = rand()*10    # Trait 3: Temperature tolerance
-        H_opt = rand()*20      # Trait 4: Habitat optimum
-        H_sd = rand()*10 # Trait 5: Habitat tolerance
+        H_opt = rand()      # Trait 4: Habitat optimum
+        H_sd = rand() # Trait 5: Habitat tolerance
         Disp_l = rand()      # Trait 6: Dispersal probability
         Disp_g = rand()       # Trait 7: Global dispersal probability
         Fert_max = 15       # Trait 8: Maximum number of offspring
@@ -505,35 +505,47 @@ end
 # Data Output Functions
 #-------------------------
 
-function set_filename(argumentsdict::Dict, par::Dict,grad,clim)
+function set_filename(argumentsdict::Dict, par::Dict,clim,grad)
     filename = string("S", clim)
+    println(filename)
     if grad == 1
         filename = string(filename, "_G0.5")
+        println(filename)
     elseif grad == 2
         filename = string(filename, "_G1")
+        println(filename)
     elseif grad == 3
         filename = string(filename, "_G2")
+        println(filename)
     end
     if argumentsdict["burninperiod"] == true
         filename = string(filename,"_B", par["bmax"])
+        println(filename)
     end
     filename = string(filename, "_T", par["tmax"])
+    println(filename)
     if argumentsdict["uniformt"] == true
         filename = string(filename,"_UT")
+        println(filename)
     else
         if argumentsdict["autocorrelatedtemp"] == true
-            filename = "_AT"
+            filename = string(filename,"_AT")
+            println(filename)
         else
-            filename = "_ClT"
+            filename = string(filename,"_ClT")
+            println(filename)
         end
     end
     if argumentsdict["uniformenv"] == true
         filename = string(filename,"_UE")
+        println(filename)
     else
         if argumentsdict["autocorrelatedenv"] == true
             filename = string(filename,"_Ae")
+            println(filename)
         else
             filename = string(filename,"_Cle")
+            println(filename)
         end
     end
     tempsource = argumentsdict["tempsource"]
@@ -580,7 +592,7 @@ function trait_analysis(landscape::Array{TPatch,2})
     cols = length(landscape[1,1:end])
     #println("cols = $cols")
     n_species = length(species_list[1:end,1])
-    n_traits = length(species_list[1,2:end-1])
+    n_traits = length(species_list[1,2:8]) # 7 traits of interest, 
     global trait_means = Array{Array{Float32,2}}(undef,n_traits)
     for k in 1:n_traits
         #println("trait loop = $k")
@@ -720,8 +732,11 @@ end
 function heatmaps(richness,temperatures,habitats,pops,trait_means,filename,directory)
     type = ".png"
     rich = string(directory,"Rich_",filename,type)
+    println(rich)
     temps = string(directory,"Temp_",filename,type)
+    println(temps)
     hab = string(directory,"Habitat_",filename,type)
+    println(hab)
     heatmap(richness)
     png(rich)
     heatmap(temperatures)
@@ -731,12 +746,14 @@ function heatmaps(richness,temperatures,habitats,pops,trait_means,filename,direc
     for i in 1:length(species_list[1:end,1])
         spdist = string("Spp_$i","_")
         spfilename = string(directory,spdist,filename,type)
+        println(spfilename)
         heatmap(pops[i])
         png(spfilename)
     end
     for i in 1:length(trait_means)
         traits = string("Trait_$i","_")
         trfilename = string(directory,traits,filename,type)
+        println(trfilename)
         heatmap(trait_means[i])
         png(trfilename)
     end
@@ -790,15 +807,15 @@ function simulation_test(parasource::String, s1::Int, s2::Int)
     par = include(parasource)
     bmax = par["bmax"]
     tmax = par["tmax"]
-    α = par["α4"]
+    α = par["α3"]
     T_ref = par["T_ref"]
     dir = par["dir"]
-    filename,tempsource,envsource = set_filename(argumentsdict,par,s2,s1)
+    filename,tempsource,envsource = set_filename(argumentsdict,par,s1,s2)
     Random.seed!(123)
     println("Initializing world.")
     grad = gradient_scenario(s2)
     init_world(tempsource,s1)
-    generate_climate_trend(tmax,0,1,s2)
+    generate_climate_trend(tmax,0,1,s1)
     init_spp2()
     println("Starting burn-in period.")
     for b in 1:bmax
@@ -833,7 +850,7 @@ end
 function simulation_run1(parasource::String)
     bmax = par["bmax"]
     tmax = par["tmax"]
-    α = par["α4"]
+    α = par["α2"]
     T_ref = par["T_ref"]
     dir = par["dir"]
     start_pop_size = par["initial_pop"]
@@ -876,19 +893,25 @@ end
 # Run simulation using landscape and parameters from input files. Requires inputs for temperature, environment,
 # s1,s2... are loop indices for different scenarios (e.g. climate trend, gradient strength)
 function simulation_run2(parasource::String, s1::Int, s2::Int)
+    println("Starting.")
+    println("function inputs:")
+    println("parasource = $parasource")
+    println("s1 = $s1")
+    println("s2 = $s2")
     par = include(parasource)
     ArgDict = read_arguments()
     bmax = par["bmax"]
     tmax = par["tmax"]
-    α = par["α4"]
+    α = par["α1.5"]
     T_ref = par["T_ref"]
     dir = par["dir"]
-    filename,tempsource,envsource = set_filename(ArgDict,par,s2,s1)
+    println(dir)
+    filename,tempsource,envsource = set_filename(ArgDict,par,s1,s2)
     Random.seed!(123)
     println("Initializing world.")
     grad = gradient_scenario(s2)
-    init_world(tempsource,envsource,s1)
-    generate_climate_trend(tmax,0,1,s2)
+    init_world(tempsource,envsource,grad)
+    generate_climate_trend(tmax,0,1,s1)
     init_spp2()
     println("Starting burn-in period.")
     if ArgDict["burninperiod"] == true
@@ -923,9 +946,9 @@ end
 #----------------------------------------------
 # Main Script
 #----------------------------------------------
-# i is the gradient scenario, j is the climate scenario
-@time for i in 1:3
-        for j in 0:3
-            simulation_run2(parasource,j,i)
+# s_clim is the climate scenario, s_grad is the gradient scenario
+@time for s_clim in 0:3
+            simulation_run2(parasource,s_clim,2)
         end
-    end
+
+#for i in 1:3
