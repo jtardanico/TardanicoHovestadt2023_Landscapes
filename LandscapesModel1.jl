@@ -122,9 +122,19 @@ function read_arguments()
         "--autocorrelatedtemp", "-a" # Autocorrelated or clustered landscape? Used for output file name
             help = "Is the tempsource autocorrelated (true) or clustered (false)?"
             arg_type = Bool
+            default=false
+        "--autocor_t", "-c"
+            help = "Degree of autocorrelation (H) or cluster size for temperature"
+            arg_type = Float32
+            default=Float32(NaN)
         "--autocorrelatedenv", "-i" # ^ Ditto
             help = "Is the envsource autocorrelated (true) or clustered (false)?"
             arg_type = Bool
+            default=false
+        "--autocor_e", "-d"
+            help = "Degree of autocorrelation (H) or cluster size for environment"
+            arg_type = Float32
+            default=Float32(NaN)
         "--uniformt", "-u"
             help = "Is temperature uniform throughout the landscape?"
             arg_type = Bool
@@ -197,7 +207,7 @@ function init_pops(n_pop::Int)
 end
 
 # Initialized a population of individuals with randomized trait values
-function init_pops2(n_pop::Int)
+function init_popgrad(n_pop::Int)
     n_traits = 10
     patchpop = Array{Array{Float32,2},1}(undef,1)
     population = Array{Float32,2}(undef,n_pop,n_traits)
@@ -275,7 +285,7 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient)
         for j in 1:ncols
             row = i
             col = j
-            patchpop = init_pops2(100)
+            patchpop = init_popgrad(100)
             temp = temperatures[i,j]
             habitat = environments[i,j]
             precip = 0
@@ -529,10 +539,10 @@ function set_filename(argumentsdict::Dict, par::Dict,clim,grad)
         println(filename)
     else
         if argumentsdict["autocorrelatedtemp"] == true
-            filename = string(filename,"_AT")
+            filename = string(filename,"_AT",argumentsdict["autocor_t"])
             println(filename)
         else
-            filename = string(filename,"_ClT")
+            filename = string(filename,"_ClT",argumentsdict["autocor_t"])
             println(filename)
         end
     end
@@ -541,10 +551,10 @@ function set_filename(argumentsdict::Dict, par::Dict,clim,grad)
         println(filename)
     else
         if argumentsdict["autocorrelatedenv"] == true
-            filename = string(filename,"_Ae")
+            filename = string(filename,"_Ae",argumentsdict["autocor_e"])
             println(filename)
         else
-            filename = string(filename,"_Cle")
+            filename = string(filename,"_Cle",argumentsdict["autocor_e"])
             println(filename)
         end
     end
@@ -592,7 +602,7 @@ function trait_analysis(landscape::Array{TPatch,2})
     cols = length(landscape[1,1:end])
     #println("cols = $cols")
     n_species = length(species_list[1:end,1])
-    n_traits = length(species_list[1,2:8]) # 7 traits of interest, 
+    n_traits = length(species_list[1,2:8]) # 7 traits of interest,
     global trait_means = Array{Array{Float32,2}}(undef,n_traits)
     for k in 1:n_traits
         #println("trait loop = $k")
@@ -705,12 +715,12 @@ end
 
 # Writes the full landscape data to a .csv file, including every individual in every patch.
 # Caution: Very large data file.
-function write_landscape_csv(landscape,directory,filename,timestep)
+function write_landscape_csv(landscape,directory,filename,timestep,s_clim,grad,H_t,H_h)
     outputname = string(directory,filename,".txt")
     rows = length(landscape[1:end,1])
     cols = length(landscape[1,1:end])
     n_species = length(landscape[1,1].species[1:end,1])
-    col_names = ["ID" "Timestep" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "LineageID" "temp_t" "precip_t" "habitat"]
+    col_names = ["ID" "Timestep" "H_t" "H_h" "clim_scen" "gradient" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "LineageID" "temp_t" "precip_t" "habitat"]
     open(outputname, "a") do IO
         writedlm(IO, col_names)
         for i in 1:rows
@@ -719,7 +729,7 @@ function write_landscape_csv(landscape,directory,filename,timestep)
                     for l in 1:length(landscape[i,j].species[k][1:end,1])
                         lin = Int(landscape[i,j].species[k][l,10])
                         lineageID = string(lin, base=16)
-                        writedlm(IO, [k timestep i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID landscape[i,j].temp_t landscape[i,j].precip_t landscape[i,j].habitat])
+                        writedlm(IO, [k timestep H_t H_h s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID landscape[i,j].temp_t landscape[i,j].precip_t landscape[i,j].habitat])
                     end
                 end
             end
@@ -803,17 +813,17 @@ end
 # Used for testing the program [!! UNDER CONSTRUCTION !!]
 # Other functions needed:
 # - Shell independent filename function.
-function simulation_test(parasource::String, s1::Int, s2::Int)
+function simulation_test(parasource::String, s1::Int, grad::Int)
     par = include(parasource)
     bmax = par["bmax"]
     tmax = par["tmax"]
     α = par["α3"]
     T_ref = par["T_ref"]
     dir = par["dir"]
-    filename,tempsource,envsource = set_filename(argumentsdict,par,s1,s2)
+    filename,tempsource,envsource = set_filename(argumentsdict,par,s1,grad)
     Random.seed!(123)
     println("Initializing world.")
-    grad = gradient_scenario(s2)
+    grad = gradient_scenario(grad)
     init_world(tempsource,s1)
     generate_climate_trend(tmax,0,1,s1)
     init_spp2()
@@ -891,25 +901,24 @@ function simulation_run1(parasource::String)
 end
 
 # Run simulation using landscape and parameters from input files. Requires inputs for temperature, environment,
-# s1,s2... are loop indices for different scenarios (e.g. climate trend, gradient strength)
-function simulation_run2(parasource::String, s1::Int, s2::Int)
+# s1,grad... are loop indices for different scenarios (e.g. climate trend, gradient strength)
+function simulation_run2(parasource::String, s1::Int)
     println("Starting.")
-    println("function inputs:")
+    println("Climate scenario $s1")
     println("parasource = $parasource")
-    println("s1 = $s1")
-    println("s2 = $s2")
     par = include(parasource)
     ArgDict = read_arguments()
     bmax = par["bmax"]
     tmax = par["tmax"]
+    grad_str = par["grad"]
     α = par["α1.5"]
     T_ref = par["T_ref"]
     dir = par["dir"]
     println(dir)
-    filename,tempsource,envsource = set_filename(ArgDict,par,s1,s2)
+    filename,tempsource,envsource = set_filename(ArgDict,par,s1,grad_str)
     Random.seed!(123)
     println("Initializing world.")
-    grad = gradient_scenario(s2)
+    grad = gradient_scenario(grad_str)
     init_world(tempsource,envsource,grad)
     generate_climate_trend(tmax,0,1,s1)
     init_spp2()
@@ -938,7 +947,7 @@ function simulation_run2(parasource::String, s1::Int, s2::Int)
     trait_analysis(landscape)
     env_analysis(landscape,trend[tmax])
     heatmaps(richness,temperatures,habitat,pops,trait_means,filename,dir)
-    write_landscape_csv(landscape,dir,filename,tmax)
+    write_landscape_csv(landscape,dir,filename,tmax,s1,grad,ArgDict["autocor_t"],ArgDict["autocor_e"])
     #write_sp_list(species_list,dir)
     println("Program complete.")
 end
@@ -948,7 +957,5 @@ end
 #----------------------------------------------
 # s_clim is the climate scenario, s_grad is the gradient scenario
 @time for s_clim in 0:3
-            simulation_run2(parasource,s_clim,2)
+            simulation_run2(parasource,s_clim)
         end
-
-#for i in 1:3
