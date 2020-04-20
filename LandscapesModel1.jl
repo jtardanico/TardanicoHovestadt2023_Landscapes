@@ -6,13 +6,13 @@
 #---------------------
 # Packages
 #---------------------
-using Pkg
+#using Pkg
 
-Pkg.add("Plots")
-Pkg.add("Plotly")
-Pkg.add("StatsBase")
-Pkg.add("Distributions")
-Pkg.add("ArgParse")
+#Pkg.add("Plots")
+#Pkg.add("Plotly")
+#Pkg.add("StatsBase")
+#Pkg.add("Distributions")
+#Pkg.add("ArgParse")
 
 using Distributions
 using ArgParse
@@ -26,8 +26,6 @@ using StatsBase
 #--------------------------
 
 parasource = "/home/joseph/github/LandKlifModel/ParameterDict1.jl"
-worldtempsource = "/home/joseph/Documents/PhD/Landklif Model/Landscapes/Model1/Landscape Files/Test Landscape 1 Autocorrelated/150-0.3-0.txt"#file name
-worldenvsource = "/home/joseph/Documents/PhD/Landklif Model/Landscapes/Model1/Landscape Files/Test Landscape 1 Autocorrelated/150-0.3-0.5.txt"#file name
 
 #---------------------
 # Objects
@@ -52,7 +50,7 @@ end
 
 function expected_fert(T_opt,T_sd,H_opt,H_sd,Fert_max, temp_t, habitat, α_t, α_h, t_ref, trend)
     temp = temp_t + t_ref + trend # Patch temperature
-    e_fert = Fert_max * exp(-(temp-T_opt)^2/(2*T_sd^2)) * exp(-(habitat-H_opt)^2/(2*H_sd^2)) * exp(-T_sd^2/2*α_t^2) * exp(-H_sd^2/2*α_h^2)
+    e_fert = Fert_max * exp(-(temp-T_opt)^2/(2*T_sd^2)) * exp(-(habitat-H_opt)^2/(2*H_sd^2)) * exp(-T_sd^2/(2*α_t^2)) * exp(-H_sd^2/(2*α_h^2))
     return e_fert
 end
 
@@ -90,6 +88,8 @@ function weightedmean(means,weights)
     return wm
 end
 
+
+
 #-------------------------
 # Data Input Functions
 #-------------------------
@@ -108,7 +108,44 @@ function read_world_source(worldtempsource::String,worldenvsource::String)
     end
 end
 
-
+function read_arguments()
+    s=ArgParseSettings()
+    @add_arg_table s begin
+        "--tempsource", "-t" # Name of temperature source file in the shell script
+            help = "Landscape temperature source file"
+        "--envsource", "-e"
+            help = "Landscape environment source file"
+        "--burninperiod", "-b" # Burn in period before simulation start
+            help = "Burn-in period before simulation start"
+            arg_type = Bool
+            default = false
+        "--autocorrelatedtemp", "-a" # Autocorrelated or clustered landscape? Used for output file name
+            help = "Is the tempsource autocorrelated (true) or clustered (false)?"
+            arg_type = Bool
+            default=false
+        "--autocor_t", "-c"
+            help = "Degree of autocorrelation (H) or cluster size for temperature"
+            arg_type = Float32
+            default=Float32(NaN)
+        "--autocorrelatedenv", "-i" # ^ Ditto
+            help = "Is the envsource autocorrelated (true) or clustered (false)?"
+            arg_type = Bool
+            default=false
+        "--autocor_e", "-d"
+            help = "Degree of autocorrelation (H) or cluster size for environment"
+            arg_type = Float32
+            default=Float32(NaN)
+        "--uniformt", "-u"
+            help = "Is temperature uniform throughout the landscape?"
+            arg_type = Bool
+            default = false
+        "--uniformenv", "-o"
+            help = "Is the environment uniform throughout the landscape?"
+            arg_type = Bool
+            default = false
+        end
+        return parse_args(s)
+end
 #-------------------------
 # Simulation Functions
 #-------------------------
@@ -170,7 +207,7 @@ function init_pops(n_pop::Int)
 end
 
 # Initialized a population of individuals with randomized trait values
-function init_pops2(n_pop::Int)
+function init_popgrad(n_pop::Int)
     n_traits = 10
     patchpop = Array{Array{Float32,2},1}(undef,1)
     population = Array{Float32,2}(undef,n_pop,n_traits)
@@ -180,9 +217,9 @@ function init_pops2(n_pop::Int)
         T_sd = rand()*10    # Trait 3: Temperature tolerance
         H_opt = rand()      # Trait 4: Habitat optimum
         H_sd = rand() # Trait 5: Habitat tolerance
-        Disp_l = rand()      # Trait 6: Local dispersal probability
+        Disp_l = rand()      # Trait 6: Dispersal probability
         Disp_g = rand()       # Trait 7: Global dispersal probability
-        Fert_max = rand(5:30)       # Trait 8: Maximum number of offspring
+        Fert_max = 15       # Trait 8: Maximum number of offspring
         dispersed = false   # Trait 9: Whether or not individual has already dispersed
         lineage = abs(rand(Int)) # Trait 10: Lineage identifier
         population[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage]
@@ -223,9 +260,24 @@ function generate_climate_trend(nsteps::Int,mean,sd,trend_type::Int)
     end
 end
 
+function gradient_scenario(scenario)
+    if scenario == 1
+        gradient = 0.5
+    elseif scenario == 2
+        gradient = 1
+    elseif scenario == 3
+        gradient = 2
+    else
+        error("Invalid scenario. No such scenario implemented.")
+    end
+    return gradient
+end
 # Initializes a landscape from file inputs.
-function init_world(worldtempsource::String,worldenvsource::String)
+# 'gradient' defines landscape gradient steepness
+function init_world(worldtempsource::String,worldenvsource::String,gradient)
     temperatures, environments = read_world_source(worldtempsource,worldenvsource)
+    temperatures = temperatures * gradient
+    environments = environments * gradient
     nrows = length(temperatures[1:end,1])
     ncols = length(temperatures[1,1:end])
     global landscape = Array{TPatch, 2}(undef, nrows, ncols)
@@ -233,7 +285,7 @@ function init_world(worldtempsource::String,worldenvsource::String)
         for j in 1:ncols
             row = i
             col = j
-            patchpop = init_pops2(20)
+            patchpop = init_popgrad(100)
             temp = temperatures[i,j]
             habitat = environments[i,j]
             precip = 0
@@ -463,6 +515,54 @@ end
 # Data Output Functions
 #-------------------------
 
+function set_filename(argumentsdict::Dict, par::Dict,clim,grad)
+    filename = string("S", clim)
+    println(filename)
+    if grad == 1
+        filename = string(filename, "_G0.5")
+        println(filename)
+    elseif grad == 2
+        filename = string(filename, "_G1")
+        println(filename)
+    elseif grad == 3
+        filename = string(filename, "_G2")
+        println(filename)
+    end
+    if argumentsdict["burninperiod"] == true
+        filename = string(filename,"_B", par["bmax"])
+        println(filename)
+    end
+    filename = string(filename, "_T", par["tmax"])
+    println(filename)
+    if argumentsdict["uniformt"] == true
+        filename = string(filename,"_UT")
+        println(filename)
+    else
+        if argumentsdict["autocorrelatedtemp"] == true
+            filename = string(filename,"_AT",argumentsdict["autocor_t"])
+            println(filename)
+        else
+            filename = string(filename,"_ClT",argumentsdict["autocor_t"])
+            println(filename)
+        end
+    end
+    if argumentsdict["uniformenv"] == true
+        filename = string(filename,"_UE")
+        println(filename)
+    else
+        if argumentsdict["autocorrelatedenv"] == true
+            filename = string(filename,"_Ae",argumentsdict["autocor_e"])
+            println(filename)
+        else
+            filename = string(filename,"_Cle",argumentsdict["autocor_e"])
+            println(filename)
+        end
+    end
+    tempsource = argumentsdict["tempsource"]
+    envsource = argumentsdict["envsource"]
+    return filename,tempsource,envsource
+end
+
 # Calculates species richness for a single patch
 function patch_species_richness(landscape::Array{TPatch,2},row::Int,col::Int)
     rich = 0
@@ -494,6 +594,7 @@ end
 
 # Calculates trait value means for each patch in the landscape and outputs a 3d array with dimensions
 # rows by cols by n_traits.
+# Note: This function could be more elegantly written. Consider rewriting this function.
 function trait_analysis(landscape::Array{TPatch,2})
     #println("Trait Analysis")
     rows = length(landscape[1:end,1])
@@ -501,7 +602,7 @@ function trait_analysis(landscape::Array{TPatch,2})
     cols = length(landscape[1,1:end])
     #println("cols = $cols")
     n_species = length(species_list[1:end,1])
-    n_traits = length(species_list[1,2:end-1])
+    n_traits = length(species_list[1,2:8]) # 7 traits of interest,
     global trait_means = Array{Array{Float32,2}}(undef,n_traits)
     for k in 1:n_traits
         #println("trait loop = $k")
@@ -511,21 +612,27 @@ function trait_analysis(landscape::Array{TPatch,2})
         for i in 1:rows
             #println("Row = $i")
             for j in 1:cols
-                #println("Col = $j")
-                for p in 1:n_species
-                    #println("Species = $p")
-                    weights[p] = length(landscape[i,j].species[p][1:end,1])
-                    #println("Weight = $(length(landscape[i,j].species[p][1:end,1]))")
-                    if length(landscape[i,j].species[p][1:end,1]) > 0
-                        means[p] = mean(landscape[i,j].species[p][1:end,k+1])
-                        #println("Mean = $(means[p])")
-                    else
-                        means[p] = 0
-                        #println("Mean = $(means[p])")
-                    end
-                end # End species loop
+                if n_species > 1
+                    #println("Col = $j")
+                    for p in 1:n_species
+                        #println("Species = $p")
+                        weights[p] = length(landscape[i,j].species[p][1:end,1])
+                        #println("Weight = $(length(landscape[i,j].species[p][1:end,1]))")
+                        if length(landscape[i,j].species[p][1:end,1]) > 0
+                            means[p] = mean(landscape[i,j].species[p][1:end,k+1])
+                            #println("Mean = $(means[p])")
+                        else
+                            means[p] = 0
+                            #println("Mean = $(means[p])")
+                        end
+                    end # End species loop
+                end
                 #println("Weighted mean = $(weightedmean(means,weights))")
-                mean_traits_values[i,j] = weightedmean(means,weights)
+                if n_species > 1
+                    mean_traits_values[i,j] = weightedmean(means,weights)
+                else
+                    mean_traits_values[i,j] = mean(landscape[i,j].species[1][1:end,k+1])
+                end
             end # End col loop
         end # End row loop
         global trait_means[k] = mean_traits_values
@@ -562,6 +669,34 @@ function env_analysis(landscape::Array{TPatch,2},trend_t)
     global habitat = habitat
 end
 
+# Calculates unweighted mean stress
+function mean_stress(landscape::Array{TPatch,2},T_ref, trend)
+    rows = length(landscape[1:end,1])
+    cols = length(landscape[1,1:end])
+    n_species = length(species_list[1:end,1])
+    stress_t = Array{Float32,2}(undef,rows,cols) # Temperature stress
+    stress_h = Array{Float32,2}(undef,rows,cols) # Habitat stress
+    stress_o = Array{Float32,2}(undef,rows,cols) # Overall stress
+    for i in 1:rows
+        for j in 1:cols
+            for p in 1:n_species
+                S_T, S_H = stress.(landscape[i,j].species[p][1:end,2], # Calculating environmental stress for a species in a patch
+                           landscape[i,j].species[p][1:end,3],
+                           landscape[i,j].species[p][1:end,4],
+                           landscape[i,j].species[p][1:end,5],
+                           landscape[i,j].temp_t,
+                           landscape[i,j].habitat,
+                           T_ref, trend)
+                S_O = (S_T .* S_H) # Calculate overall stress
+                stress_t[i,j] = mean(S_T)
+                stress_h[i,j] = mean(S_H)
+                stress_o[i,j] = mean(S_O)
+            end
+        end
+    end
+    return stress_t,stress_h,stress_o
+end
+
 # Currently broken
 function write_sp_list(species_list,directory)
     rows = length(species_list[1:end,1])
@@ -580,21 +715,21 @@ end
 
 # Writes the full landscape data to a .csv file, including every individual in every patch.
 # Caution: Very large data file.
-function write_landscape_csv(landscape,timestep,scenario,directory,filename)
-    time = "_T$timestep"
-    scenario ="_S$scenario"
-    outputname = string(directory,filename,time,scenario,".txt")
+function write_landscape_csv(landscape,directory,filename,timestep,s_clim,grad,H_t,H_h)
+    outputname = string(directory,filename,".txt")
     rows = length(landscape[1:end,1])
     cols = length(landscape[1,1:end])
     n_species = length(landscape[1,1].species[1:end,1])
-    col_names = ["ID" "Timestep" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "LineageID" "temp_t" "precip_t" "habitat"]
+    col_names = ["ID" "Timestep" "H_t" "H_h" "clim_scen" "gradient" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "LineageID" "temp_t" "precip_t" "habitat"]
     open(outputname, "a") do IO
         writedlm(IO, col_names)
         for i in 1:rows
             for j in 1:cols
                 for k in 1:n_species
                     for l in 1:length(landscape[i,j].species[k][1:end,1])
-                        writedlm(IO, [k timestep i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] landscape[i,j].species[k][l,10] landscape[i,j].temp_t landscape[i,j].precip_t landscape[i,j].habitat])
+                        lin = Int(landscape[i,j].species[k][l,10])
+                        lineageID = string(lin, base=16)
+                        writedlm(IO, [k timestep H_t H_h s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID landscape[i,j].temp_t landscape[i,j].precip_t landscape[i,j].habitat])
                     end
                 end
             end
@@ -604,13 +739,14 @@ end
 
 # Creates heatmap graphs with patch values for environmental variables, richness, trait means,
 # and individual species populations in .png format.
-function heatmaps(richness,temperatures,habitats,pops,trait_means,timestep,scenario,directory)
-    time = "_T$timestep"
-    scenario ="_S$scenario"
+function heatmaps(richness,temperatures,habitats,pops,trait_means,filename,directory)
     type = ".png"
-    rich = string(directory,"Rich_",time,scenario,type)
-    temps = string(directory,"Temp_",time,scenario,type)
-    hab = string(directory,"Habitat_",time,scenario,type)
+    rich = string(directory,"Rich_",filename,type)
+    println(rich)
+    temps = string(directory,"Temp_",filename,type)
+    println(temps)
+    hab = string(directory,"Habitat_",filename,type)
+    println(hab)
     heatmap(richness)
     png(rich)
     heatmap(temperatures)
@@ -618,16 +754,18 @@ function heatmaps(richness,temperatures,habitats,pops,trait_means,timestep,scena
     heatmap(habitats)
     png(hab)
     for i in 1:length(species_list[1:end,1])
-        spdist = "Spp_$i"
-        filename = string(directory,spdist,time,scenario,type)
+        spdist = string("Spp_$i","_")
+        spfilename = string(directory,spdist,filename,type)
+        println(spfilename)
         heatmap(pops[i])
-        png(filename)
+        png(spfilename)
     end
     for i in 1:length(trait_means)
-        traits = "Trait_$i"
-        filename = string(directory,traits,time,scenario,type)
+        traits = string("Trait_$i","_")
+        trfilename = string(directory,traits,filename,type)
+        println(trfilename)
         heatmap(trait_means[i])
-        png(filename)
+        png(trfilename)
     end
 end
 
@@ -671,6 +809,51 @@ end
 #----------------------------------------------
 # Main Program
 #----------------------------------------------
+
+# Used for testing the program [!! UNDER CONSTRUCTION !!]
+# Other functions needed:
+# - Shell independent filename function.
+function simulation_test(parasource::String, s1::Int, grad::Int)
+    par = include(parasource)
+    bmax = par["bmax"]
+    tmax = par["tmax"]
+    α = par["α3"]
+    T_ref = par["T_ref"]
+    dir = par["dir"]
+    filename,tempsource,envsource = set_filename(argumentsdict,par,s1,grad)
+    Random.seed!(123)
+    println("Initializing world.")
+    grad = gradient_scenario(grad)
+    init_world(tempsource,s1)
+    generate_climate_trend(tmax,0,1,s1)
+    init_spp2()
+    println("Starting burn-in period.")
+    for b in 1:bmax
+        println("Beginning timestep $b.")
+        #println("Starting dispersal routine.")
+        dispersal!(landscape)
+        #println("Starting reproduction routine.")
+        demographics(landscape,α,T_ref,trend[1],300)
+        #println("End timestep $t.")
+    end
+    println("Starting ")
+    for t in 1:tmax
+        println("Beginning timestep $t.")
+        #println("Starting dispersal routine.")
+        dispersal!(landscape)
+        #println("Starting reproduction routine.")
+        demographics(landscape,α,T_ref,trend[t],300)
+        #println("End timestep $t.")
+    end
+    println("End time loop. Analyzing landscape.")
+    diversity_analysis(landscape)
+    trait_analysis(landscape)
+    env_analysis(landscape,trend[tmax])
+    heatmaps(richness,temperatures,habitat,pops,trait_means,filename,dir)
+    write_landscape_csv(landscape,dir,filename)
+    #write_sp_list(species_list,dir)
+    println("Program complete.")
+end
 
 # Run simulation with automatically generated landscape. Loops over 4 climate trends.
 # 10 species populations.
@@ -718,21 +901,29 @@ function simulation_run1(parasource::String)
 end
 
 # Run simulation using landscape and parameters from input files. Requires inputs for temperature, environment,
-# simulation parameters. Loops over 4 climate trends.
-function simulation_run2(parasource::String,worldtempsource::String,worldenvsource::String)
+# s1,grad... are loop indices for different scenarios (e.g. climate trend, gradient strength)
+function simulation_run2(parasource::String, s1::Int)
+    println("Starting.")
+    println("Climate scenario $s1")
+    println("parasource = $parasource")
     par = include(parasource)
+    ArgDict = read_arguments()
     bmax = par["bmax"]
     tmax = par["tmax"]
-    α = par["α2"]
+    grad_str = par["grad"]
+    α = par["α1.5"]
     T_ref = par["T_ref"]
     dir = par["dir"]
-    for s in 0:3
-        Random.seed!(123)
-        println("Initializing world.")
-        init_world(worldtempsource,worldenvsource)
-        generate_climate_trend(tmax,0,1,s)
-        init_spp2()
-        println("Starting burn-in period.")
+    println(dir)
+    filename,tempsource,envsource = set_filename(ArgDict,par,s1,grad_str)
+    Random.seed!(123)
+    println("Initializing world.")
+    grad = gradient_scenario(grad_str)
+    init_world(tempsource,envsource,grad)
+    generate_climate_trend(tmax,0,1,s1)
+    init_spp2()
+    println("Starting burn-in period.")
+    if ArgDict["burninperiod"] == true
         for b in 1:bmax
             println("Beginning timestep $b.")
             #println("Starting dispersal routine.")
@@ -741,22 +932,22 @@ function simulation_run2(parasource::String,worldtempsource::String,worldenvsour
             demographics(landscape,α,T_ref,trend[1],300)
             #println("End timestep $t.")
         end
-        println("Starting ")
-        for t in 1:tmax
-            println("Beginning timestep $t.")
-            #println("Starting dispersal routine.")
-            dispersal!(landscape)
-            #println("Starting reproduction routine.")
-            demographics(landscape,α,T_ref,trend[t],300)
-            #println("End timestep $t.")
-        end
-        println("End time loop. Analyzing landscape.")
-        diversity_analysis(landscape)
-        trait_analysis(landscape)
-        env_analysis(landscape,trend[tmax])
-        heatmaps(richness,temperatures,habitat,pops,trait_means,tmax,s,dir)
-        write_landscape_csv(landscape,tmax,s,dir,"Output")
     end
+    println("Starting ")
+    for t in 1:tmax
+        println("Beginning timestep $t.")
+        #println("Starting dispersal routine.")
+        dispersal!(landscape)
+        #println("Starting reproduction routine.")
+        demographics(landscape,α,T_ref,trend[t],300)
+        #println("End timestep $t.")
+    end
+    println("End time loop. Analyzing landscape.")
+    diversity_analysis(landscape)
+    trait_analysis(landscape)
+    env_analysis(landscape,trend[tmax])
+    heatmaps(richness,temperatures,habitat,pops,trait_means,filename,dir)
+    write_landscape_csv(landscape,dir,filename,tmax,s1,grad,ArgDict["autocor_t"],ArgDict["autocor_e"])
     #write_sp_list(species_list,dir)
     println("Program complete.")
 end
@@ -764,113 +955,7 @@ end
 #----------------------------------------------
 # Main Script
 #----------------------------------------------
-
-simulation_run2(parasource,worldtempsource,worldenvsource)
-
-#----------------------------------------------
-# Code Testing Grounds
-#----------------------------------------------
-abs(rand(Int))
-
-
-par = include(parasource)
-tmax = par["tmax"]
-α = par["α2"]
-T_ref = par["T_ref"]
-dir = par["dir"]
-Random.seed!(123)
-println("Initializing world.")
-init_world(worldtempsource,worldenvsource)
-generate_climate_trend(tmax,0,1,0)
-dispersal!(landscape)
-#println("Starting reproduction routine.")
-demographics(landscape,α,T_ref,trend[1],300)
-
-#-----------------------------------------------
-
-#-----------------------------------------------
-
-heatmap(richness)
-png("C:/Users/Joey's PC/Documents/PhD/Landklif Model/Alpha/Output2/Species_richnessB10.png")
-
-heatmap(pops[1])
-
-heatmap(pops[2])
-
-heatmap(pops[3])
-
-heatmap(pops[4])
-
-heatmap(pops[5])
-
-heatmap(pops[6])
-
-heatmap(pops[7])
-
-heatmap(pops[8])
-
-heatmap(pops[9])
-
-heatmap(pops[10])
-
-heatmap(trait_means[4])
-
-for i in 1:length(species_list[1:end,1])
-    heatmap(pops[i])
-    png("/home/joseph/Documents/PhD/Landklif Model/Alpha/Output3/Species_distB10_$i.png")
-end
-
-for i in 1:length(trait_means)
-    heatmap(trait_means[i])
-    png("/home/joseph/Documents/PhD/Landklif Model/Alpha/Output3/Trait_means_$i.png")
-end
-
-#println("$(landscape[1,1].species[1][1:end,1])")
-
-landscape[1,1].species[1][1,1:end]
-
-ENV["GRDIR"]
-Pkg.build("GR")
-#-----------------------------------------------------------------
-# Tested but not fully implemented
-#-----------------------------------------------------------------
-
-# Habitat Adaptation Point Allocation
-
-# Two functions for determining habitat specialization for
-
-function allocate_points(total_points,n_categories)
-    adapt = zeros(Int,n_categories)
-    #println("Adapt = $adapt")
-    while total_points > 0
-        #println("Total points >= 0")
-        points = rand(1:300)
-        #println("points = $points")
-        if  points <= total_points
-            #println("Points <= total points")
-            total_points -= points
-            #println("New total points = $total_points")
-        else
-            #println("Points > total points")
-            points = total_points
-            total_points -= points
-            #println("Points set to total points")
+# s_clim is the climate scenario, s_grad is the gradient scenario
+@time for s_clim in 0:3
+            simulation_run2(parasource,s_clim)
         end
-        cat = rand(1:n_categories)
-        #println("Points allocated to category $cat")
-        adapt[cat] += points
-        #println("Points invested in category $cat = $(adapt[cat])")
-    end
-    return adapt
-end
-
-function set_habitat_adapt(categories)
-    total_points = 1000
-    #println("Total points = $total_points")
-    adaptation = allocate_points(total_points,categories)
-    return adaptation
-end
-
-allocation = set_habitat_adapt(10)
-allocation
-sum(allocation)

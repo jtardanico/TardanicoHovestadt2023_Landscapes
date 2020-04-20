@@ -2,6 +2,7 @@ Dict{String,Any}(
 "bmax" => 50, # Number of timesteps in burn-in period
 "tmax" => 50, # Number of timesteps in Simulation_Run
 "T_ref" => 12.5,
+"grad" => 2,
 "α0" => 0,
 "α1" => 1,
 "α1.5" => 1.5,
@@ -10,5 +11,5 @@ Dict{String,Any}(
 "α4" => 4,
 "α5" => 5,
 "initial_pop" => 10,
-"dir" => "/home/joseph/Documents/PhD/Landklif Model/Landscapes/Model1/Test Output/Test 1",
+"dir" => "/home/joseph/Documents/PhD/LandklifModel/Landscapes/Model1/Experiment1/Gradient0.5/",
 )
