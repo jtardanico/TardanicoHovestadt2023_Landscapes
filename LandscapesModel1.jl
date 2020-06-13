@@ -216,7 +216,7 @@ function init_popgrad(n_pop::Int)
         T_opt = rand()*20+10 #8+22 # Trait 2: Temperature optimum
         T_sd = rand()*10    # Trait 3: Temperature tolerance
         H_opt = rand()      # Trait 4: Habitat optimum
-        H_sd = rand() # Trait 5: Habitat tolerance
+        H_sd = rand()*10 # Trait 5: Habitat tolerance
         Disp_l = rand()      # Trait 6: Dispersal probability
         Disp_g = rand()       # Trait 7: Global dispersal probability
         Fert_max = 15       # Trait 8: Maximum number of offspring
@@ -260,18 +260,6 @@ function generate_climate_trend(nsteps::Int,mean,sd,trend_type::Int)
     end
 end
 
-function gradient_scenario(scenario)
-    if scenario == 1
-        gradient = 0.5
-    elseif scenario == 2
-        gradient = 1
-    elseif scenario == 3
-        gradient = 2
-    else
-        error("Invalid scenario. No such scenario implemented.")
-    end
-    return gradient
-end
 # Initializes a landscape from file inputs.
 # 'gradient' defines landscape gradient steepness
 function init_world(worldtempsource::String,worldenvsource::String,gradient)
@@ -315,16 +303,16 @@ function generate_world(dim_x::Int,dim_y::Int)
 end
 
 # Calculates number of offspring for each individual. Offspring form the next generation of individuals.
-function demographics(landscape::Array{TPatch, 2},niche_tradeoff, T_ref, trend, K::Int)
+function demographics(landscape::Array{TPatch, 2},niche_tradeoff, T_ref, trend, grad, K::Int, immi,p_immi,e_immi)
     #println("Starting demographics routine...")
-    for i in 1:length(landscape[1:end,1])
-        for j in 1:length(landscape[1,1:end])
-            offspring = Array{Array{Int,1},1}(undef,length(landscape[i,j].species[1:end]))
-            total_offspring = 0
-            for p in 1:length(landscape[i,j].species[1:end])
+    for i in 1:length(landscape[1:end,1]) # begin landscape length loop
+        for j in 1:length(landscape[1,1:end]) # Begin landscape width loop
+            offspring = Array{Array{Int,1},1}(undef,length(landscape[i,j].species[1:end])) # List of offspring for all species
+            total_offspring = 0 # Tally of all offpring of all species
+            for p in 1:length(landscape[i,j].species[1:end]) # Loop over species
                 sp_pop = length(landscape[i,j].species[p][1:end,1])
                 #println("Species $p pop. = $sp_pop")
-                if length(landscape[i,j].species[p][1:end,1])>0
+                if length(landscape[i,j].species[p][1:end,1])>0 # Check species population size
                     expected = expected_fert.(landscape[i,j].species[p][1:end,2],
                                landscape[i,j].species[p][1:end,3],
                                landscape[i,j].species[p][1:end,4],
@@ -332,62 +320,94 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, T_ref, trend, 
                                landscape[i,j].species[p][1:end,8],
                                landscape[i,j].temp_t,
                                landscape[i,j].habitat, niche_tradeoff,
-                               niche_tradeoff, T_ref, trend)
+                               niche_tradeoff, T_ref, trend) # Calculate expected offpring, see init_spp for trait key
                     #println("expected offspring = $expected")
                     global x = expected
-                    offspring[p] = rand.(Poisson.(Float64.(expected)))
+                    offspring[p] = rand.(Poisson.(Float64.(expected))) # Calculate offspring produced
                     #println("Offspring = $offspring")
                     species_offspring = sum(offspring[p]) # For diagnostic purposes. Will be removed once testing is finished
                     #println("Total offspring of species $p = $species_offspring")
                     total_offspring = total_offspring + species_offspring
                 end
-            end
-            for p in 1:length(landscape[i,j].species[1:end])
-                if length(landscape[i,j].species[p][1:end,1])>0
-                    S_T, S_H = stress(landscape[i,j].species[p][1,2], # Calculating environmental stress for a species in a patch
+            end # End loop over species
+            for p in 1:length(landscape[i,j].species[1:end]) # Begin second loop over species
+                if length(landscape[i,j].species[p][1:end,1])>0 # Check species population size
+                    #=S_T, S_H = stress(landscape[i,j].species[p][1,2], # Calculating environmental stress for a species in a patch
                                landscape[i,j].species[p][1,3],
                                landscape[i,j].species[p][1,4],
                                landscape[i,j].species[p][1,5],
                                landscape[i,j].temp_t,
                                landscape[i,j].habitat,
-                               T_ref, trend)
+                               T_ref, trend)=#
                     #println("S_T = $S_T, S_H = $S_H")
                     #K = carry_capacity(300,S_T,S_H) # Calculates carrying capacity of a patch
                     #println("K = $K")
-                    p_surv = expected_mort.(landscape[i,j].species[p][1:end,8],total_offspring,K)
+                    p_surv = expected_mort.(landscape[i,j].species[p][1:end,8],total_offspring,K) # Calculate expected mortality of oppspring
                     if K > 0 # Note: May be unecessary in future model iterations. Consider removal.
-                        surviving = rand.(Binomial.(offspring[p], Float64.(p_surv)))
+                        surviving = rand.(Binomial.(offspring[p], Float64.(p_surv))) # Calculate surviving offspring
                     else
                         surviving = 0
                     end
                     #println("Species $p has $surviving surviving offspring.")
-                    if sum(surviving) > 0
-                        newgen = Array{Float32,2}(undef,sum(surviving),length(landscape[i,j].species[p][1,1:end])) # Creates an array of length sum(offspring) with data for species p
-                        ind = 1 # Keeps count of individual offspring added to newgen array
-                        for q in 1:length(surviving) # Goes down index of 'surviving'
-                            if surviving[q] > 0
-                                for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
-                                    newgen[ind,1:end] = landscape[i,j].species[p][q,1:end]  #
-                                    ind += 1
-                                end
-                            end
-                        end
+                    if sum(surviving) > 0 # Check number of survivors
+                        if immi==true && rand() <= p_immi
+                            immigrants = rand(Poisson(e_immi))
+                            lenx = sum(surviving) + immigrants # make e_immi a dictionary parameter
+                            newgen = Array{Float32,2}(undef,lenx,length(landscape[i,j].species[p][1,1:end])) # Creates an array of length sum(offspring) with data for species p
+                            ind = 1 # Keeps count of individual offspring added to newgen array
+                            for q in 1:length(surviving) # Goes down index of 'surviving'
+                                if surviving[q] > 0
+                                    for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
+                                        newgen[ind,1:end] = landscape[i,j].species[p][q,1:end]  #
+                                        ind += 1
+                                    end # End loop over survivng offspring
+                                end # End if statement
+                            end # End loop over index of 'survivng'
+                            for q in 1:immigrants # Begin loop over immigrants
+                                ind = q + sum(surviving) # Determines where in the array immigrants get put.
+                                                         # q + sum(surviving) ensures they do not overwrite existing organisms.
+                                immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
+                                ID = i              # Trait 1: Species ID number
+                                T_opt = rand()*20+10 #8+22 # Trait 2: Temperature optimum
+                                T_sd = rand()*10    # Trait 3: Temperature tolerance
+                                H_opt = rand()*grad      # Trait 4: Habitat optimum
+                                H_sd = rand()*grad # Trait 5: Habitat tolerance
+                                Disp_l = rand()      # Trait 6: Dispersal probability
+                                Disp_g = rand()       # Trait 7: Global dispersal probability
+                                Fert_max = 15       # Trait 8: Maximum number of offspring
+                                dispersed = false   # Trait 9: Whether or not individual has already dispersed
+                                lineage = abs(rand(Int)) # Trait 10: Lineage identifier
+                                immigrant = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage]
+                                newgen[ind,1:end] = immigrant
+                            end # End loop over immigrants
+                        else
+                            newgen = Array{Float32,2}(undef,sum(surviving),length(landscape[i,j].species[p][1,1:end]))
+                            ind = 1 # Keeps count of individual offspring added to newgen array
+                            for q in 1:length(surviving) # Goes down index of 'surviving'
+                                if surviving[q] > 0
+                                    for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
+                                        newgen[ind,1:end] = landscape[i,j].species[p][q,1:end]  #
+                                        ind += 1
+                                    end # End loop over surviving offspring
+                                end # End if statement
+                            end # End loop over index of 'survivng'
+                        end # End if-else statement
                         global landscape[i,j].species[p] = copy(newgen)
                     else
                         array = Array{Float32,2}(undef,0,length(landscape[i,j].species[p][1,1:end])) # If total offspring is 0, replaces landscape[i,j].species[p]
                         global landscape[i,j].species[p] = array                               # with a 0 by 8 array.
                         #println("Set length of landscape[$i,$j].species[$p] to zero")
-                    end
+                    end # End if-else statement
                 else
                     #println("No individuals of species $p present")
                     array = Array{Float32,2}(undef,0,length(species_list[1,1:end]))
                     global landscape[i,j].species[p] = array                               # with a 0 by 8 array.
                     #println("Set length of landscape[$i,$j].species[$p] to zero")
-                end
-            end
-        end
-    end
-end
+                end # End if-else statement
+            end # End second loop over species
+        end # End landscape width loop
+    end # End landscape length loop
+end # End function
 
 # FUnction for deterimining target patch for nearest neighbor dispersal. Patch is row no. ± 1 and column no. ± 1.
 # Function will try to get a new target if the current target patch is the same as the natal patch.
@@ -475,9 +495,9 @@ end
 function dispersal!(landscape::Array{TPatch,2})
     nrows = length(landscape[1:end,1])
     ncols = length(landscape[1,1:end])
-    for i in 1:length(landscape[1:end,1])
+    for i in 1:length(landscape[1:end,1]) # Begin landscape row loop
         #println("Row $i")
-        for j in 1:length(landscape[1,1:end]) # Row & column loops
+        for j in 1:length(landscape[1,1:end]) # Begin landscape column loops
             #println("Col $j")
             if length(landscape[i,j].species)>0 # Check number of species
                 for k in 1:length(landscape[i,j].species) # loop across species
@@ -499,16 +519,16 @@ function dispersal!(landscape::Array{TPatch,2})
                                     else
                                         trow_l, tcol_l, outofbounds_l = get_target_local(nrows,ncols,i,j)
                                         disperse_local(trow_l,tcol_l,outofbounds_l,i,j,k,l)
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
+                                    end # End if-else statement
+                                end # End if statement
+                            end # End if statement
+                        end # End while loop
+                    end # End if statement
+                end # End loop over species
+            end # End if statement
+        end # End landscape column loop
+    end # End landscape row loop
+end # End function
 
 
 #-------------------------
@@ -715,12 +735,12 @@ end
 
 # Writes the full landscape data to a .csv file, including every individual in every patch.
 # Caution: Very large data file.
-function write_landscape_csv(landscape,directory,filename,timestep,s_clim,grad,H_t,H_h)
+function write_landscape_csv(landscape,directory,filename,timestep,s_clim,grad,H_t,H_h,α)
     outputname = string(directory,filename,".txt")
     rows = length(landscape[1:end,1])
     cols = length(landscape[1,1:end])
     n_species = length(landscape[1,1].species[1:end,1])
-    col_names = ["ID" "Timestep" "H_t" "H_h" "clim_scen" "gradient" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "LineageID" "temp_t" "precip_t" "habitat"]
+    col_names = ["ID" "Timestep" "H_t" "H_h" "alpha" "clim_scen" "gradient" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "LineageID" "temp_t" "precip_t" "habitat"]
     open(outputname, "a") do IO
         writedlm(IO, col_names)
         for i in 1:rows
@@ -729,7 +749,7 @@ function write_landscape_csv(landscape,directory,filename,timestep,s_clim,grad,H
                     for l in 1:length(landscape[i,j].species[k][1:end,1])
                         lin = Int(landscape[i,j].species[k][l,10])
                         lineageID = string(lin, base=16)
-                        writedlm(IO, [k timestep H_t H_h s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID landscape[i,j].temp_t landscape[i,j].precip_t landscape[i,j].habitat])
+                        writedlm(IO, [k timestep H_t H_h α s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID landscape[i,j].temp_t landscape[i,j].precip_t landscape[i,j].habitat])
                     end
                 end
             end
@@ -820,6 +840,8 @@ function simulation_test(parasource::String, s1::Int, grad::Int)
     α = par["α3"]
     T_ref = par["T_ref"]
     dir = par["dir"]
+    p_immi = par["p_immi"]
+    e_immi =
     filename,tempsource,envsource = set_filename(argumentsdict,par,s1,grad)
     Random.seed!(123)
     println("Initializing world.")
@@ -910,15 +932,17 @@ function simulation_run2(parasource::String, s1::Int)
     ArgDict = read_arguments()
     bmax = par["bmax"]
     tmax = par["tmax"]
-    grad_str = par["grad"]
-    α = par["α1.5"]
+    grad = par["grad"]
+    α = par["α"]
     T_ref = par["T_ref"]
+    immi = par["immi"]
+    p_immi = par["p_immi"]
+    e_immi = par["e_immi"]
     dir = par["dir"]
     println(dir)
-    filename,tempsource,envsource = set_filename(ArgDict,par,s1,grad_str)
+    filename,tempsource,envsource = set_filename(ArgDict,par,s1,grad)
     Random.seed!(123)
     println("Initializing world.")
-    grad = gradient_scenario(grad_str)
     init_world(tempsource,envsource,grad)
     generate_climate_trend(tmax,0,1,s1)
     init_spp2()
@@ -929,7 +953,7 @@ function simulation_run2(parasource::String, s1::Int)
             #println("Starting dispersal routine.")
             dispersal!(landscape)
             #println("Starting reproduction routine.")
-            demographics(landscape,α,T_ref,trend[1],300)
+            demographics(landscape,α,T_ref,trend[1],grad,300,immi,p_immi,e_immi)
             #println("End timestep $t.")
         end
     end
@@ -939,15 +963,15 @@ function simulation_run2(parasource::String, s1::Int)
         #println("Starting dispersal routine.")
         dispersal!(landscape)
         #println("Starting reproduction routine.")
-        demographics(landscape,α,T_ref,trend[t],300)
+        demographics(landscape,α,T_ref,trend[t],grad,300,immi,p_immi,e_immi)
         #println("End timestep $t.")
     end
     println("End time loop. Analyzing landscape.")
     diversity_analysis(landscape)
     trait_analysis(landscape)
     env_analysis(landscape,trend[tmax])
-    heatmaps(richness,temperatures,habitat,pops,trait_means,filename,dir)
-    write_landscape_csv(landscape,dir,filename,tmax,s1,grad,ArgDict["autocor_t"],ArgDict["autocor_e"])
+    #heatmaps(richness,temperatures,habitat,pops,trait_means,filename,dir)
+    write_landscape_csv(landscape,dir,filename,tmax,s1,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
     #write_sp_list(species_list,dir)
     println("Program complete.")
 end
