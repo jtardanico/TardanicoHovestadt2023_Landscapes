@@ -158,7 +158,7 @@ function init_spp(n_species::Int)
     global species_list = Array{Any,2}(undef,n_species,n_traits)
     for i in 1:n_species
         ID = i              # Trait 1: Species ID number
-        T_opt = rand()*20+10 #8+22 # Trait 2: Temperature optimum
+        T_opt = rand(Normal(mean,sd))*20+10 #8+22 # Trait 2: Temperature optimum
         T_sd = 2            # Trait 3: Temperature tolerance
         H_opt = rand()      # Trait 4: Habitat optimum
         H_sd = 0.2          # Trait 5: Habitat tolerance
@@ -208,16 +208,16 @@ function init_pops(n_pop::Int)
 end
 
 # Initialized a population of individuals with randomized trait values
-function init_popgrad(n_pop::Int, μ_t,μ_e,σ_t,σ_e)
+function init_popgrad(n_pop::Int,mean,sd)
     n_traits = 10
     patchpop = Array{Array{Float32,2},1}(undef,1)
     population = Array{Float32,2}(undef,n_pop,n_traits)
     for i in 1:n_pop
         ID = i              # Trait 1: Species ID number
-        T_opt = rand(Normal(μ_t,σ_t)) #8+22 # Trait 2: Temperature optimum
-        T_sd = rand(LogNormal(0,1))    # Trait 3: Temperature tolerance
-        H_opt = rand(Normal(μ_e,σ_t))      # Trait 4: Habitat optimum
-        H_sd = rand(LogNormal(0,1))    # Trait 5: Habitat tolerance
+        T_opt = rand(Normal(mean,sd))+12.5 #8+22 # Trait 2: Temperature optimum
+        T_sd = rand()*5    # Trait 3: Temperature tolerance
+        H_opt = rand(Normal(mean,sd))    # Trait 4: Habitat optimum
+        H_sd = rand()*5 # Trait 5: Habitat tolerance
         Disp_l = rand()      # Trait 6: Dispersal probability
         Disp_g = rand()       # Trait 7: Global dispersal probability
         Fert_max = 15       # Trait 8: Maximum number of offspring
@@ -276,7 +276,7 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient)
         for j in 1:ncols
             row = i
             col = j
-            patchpop = init_popgrad(100,m_t,m_e,sqrt(v_t),sqrt(v_e))
+            patchpop = init_popgrad(100,0.5,0.5)
             temp = temperatures[i,j]
             habitat = environments[i,j]
             precip = 0
@@ -316,6 +316,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, T_ref, trend, 
                 sp_pop = length(landscape[i,j].species[p][1:end,1])
                 #println("Species $p pop. = $sp_pop")
                 if length(landscape[i,j].species[p][1:end,1])>0 # Check species population size
+                    #println("YEET!")
                     expected = expected_fert.(landscape[i,j].species[p][1:end,2],
                                landscape[i,j].species[p][1:end,3],
                                landscape[i,j].species[p][1:end,4],
@@ -745,13 +746,13 @@ function write_landscape_csv(landscape,directory,filename,timestep,s_clim,grad,H
     n_species = length(landscape[1,1].species[1:end,1])
     col_names = ["ID" "Timestep" "H_t" "H_h" "alpha" "clim_scen" "gradient" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "LineageID" "temp_t" "precip_t" "habitat"]
     open(outputname, "a") do IO
-        if timestep == -1
+        if timestep==-1
             writedlm(IO, col_names)
         end
         for i in 1:rows
             for j in 1:cols
                 for k in 1:n_species
-                    for l in 1:length(landscape[i,j].species[k][1:end,1])
+                    for l in 1:length(landscape[i,j].species[k][1:end,1]) # <--- Timestep is not read correctly in this portion of the loop
                         lin = Int(landscape[i,j].species[k][l,10])
                         lineageID = string(lin, base=16)
                         writedlm(IO, [k timestep H_t H_h α s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID landscape[i,j].temp_t landscape[i,j].precip_t landscape[i,j].habitat])
@@ -869,7 +870,7 @@ function simulation_run2(parasource::String, s1::Int)
             #println("Starting dispersal routine.")
             dispersal!(landscape)
             #println("Starting reproduction routine.")
-            demographics(landscape,α,T_ref,trend[1],grad,300,immi,p_immi,e_immi,burnin)
+            demographics(landscape,α,T_ref,0,grad,300,immi,p_immi,e_immi)
             #println("End timestep $t.")
         end
     end
