@@ -48,8 +48,8 @@ end
 # Calculation Functions
 #---------------------
 
-function expected_fert(T_opt,T_sd,H_opt,H_sd,Fert_max, temp_t, habitat, α_t, α_h, t_ref, trend)
-    temp = temp_t + t_ref + trend # Patch temperature
+function expected_fert(T_opt,T_sd,H_opt,H_sd,Fert_max, temp_t, habitat, α_t, α_h, trend)
+    temp = temp_t + trend # Patch temperature
     e_fert = Fert_max * exp(-(temp-T_opt)^2/(2*T_sd^2)) * exp(-(habitat-H_opt)^2/(2*H_sd^2)) * exp(-T_sd^2/(2*α_t^2)) * exp(-H_sd^2/(2*α_h^2))
     return e_fert
 end
@@ -63,8 +63,8 @@ function expected_mort(Fert_max, offspring, k)
 end
 
 # Function for calculating how stressful the environment of a patch is
-function stress(T_opt,T_sd,H_opt,H_sd,temp_t, habitat,t_ref,trend)
-    temp = temp_t + t_ref + trend
+function stress(T_opt,T_sd,H_opt,H_sd,temp_t, habitat,trend)
+    temp = temp_t + trend
     S_T = exp(-(temp-T_opt)^2/(2*T_sd^2))
     S_H = exp(-(habitat-H_opt)^2/(2*H_sd^2))
     return S_T, S_H
@@ -214,7 +214,7 @@ function init_popgrad(n_pop::Int,mean,sd)
     population = Array{Float32,2}(undef,n_pop,n_traits)
     for i in 1:n_pop
         ID = i              # Trait 1: Species ID number
-        T_opt = rand(Normal(mean,sd))+12.5 #8+22 # Trait 2: Temperature optimum
+        T_opt = rand(Normal(mean,sd)) #8+22 # Trait 2: Temperature optimum
         T_sd = rand()*5    # Trait 3: Temperature tolerance
         H_opt = rand(Normal(mean,sd))    # Trait 4: Habitat optimum
         H_sd = rand()*5 # Trait 5: Habitat tolerance
@@ -306,7 +306,7 @@ function generate_world(dim_x::Int,dim_y::Int)
 end
 
 # Calculates number of offspring for each individual. Offspring form the next generation of individuals.
-function demographics(landscape::Array{TPatch, 2},niche_tradeoff, T_ref, trend, grad, K::Int, immi,p_immi,e_immi, burnin::Bool)
+function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int, immi,p_immi,e_immi)
     #println("Starting demographics routine...")
     for i in 1:length(landscape[1:end,1]) # begin landscape length loop
         for j in 1:length(landscape[1,1:end]) # Begin landscape width loop
@@ -324,7 +324,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, T_ref, trend, 
                                landscape[i,j].species[p][1:end,8],
                                landscape[i,j].temp_t,
                                landscape[i,j].habitat, niche_tradeoff,
-                               niche_tradeoff, T_ref, trend) # Calculate expected offpring, see init_spp for trait key
+                               niche_tradeoff, trend) # Calculate expected offpring, see init_spp for trait key
                     #println("expected offspring = $expected")
                     global x = expected
                     offspring[p] = rand.(Poisson.(Float64.(expected))) # Calculate offspring produced
@@ -341,8 +341,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, T_ref, trend, 
                                landscape[i,j].species[p][1,4],
                                landscape[i,j].species[p][1,5],
                                landscape[i,j].temp_t,
-                               landscape[i,j].habitat,
-                               T_ref, trend)=#
+                               landscape[i,j].habitat, trend)=#
                     #println("S_T = $S_T, S_H = $S_H")
                     #K = carry_capacity(300,S_T,S_H) # Calculates carrying capacity of a patch
                     #println("K = $K")
@@ -694,7 +693,7 @@ function env_analysis(landscape::Array{TPatch,2},trend_t)
 end
 
 # Calculates unweighted mean stress
-function mean_stress(landscape::Array{TPatch,2},T_ref, trend)
+function mean_stress(landscape::Array{TPatch,2}, trend)
     rows = length(landscape[1:end,1])
     cols = length(landscape[1,1:end])
     n_species = length(species_list[1:end,1])
@@ -709,8 +708,7 @@ function mean_stress(landscape::Array{TPatch,2},T_ref, trend)
                            landscape[i,j].species[p][1:end,4],
                            landscape[i,j].species[p][1:end,5],
                            landscape[i,j].temp_t,
-                           landscape[i,j].habitat,
-                           T_ref, trend)
+                           landscape[i,j].habitat, trend)
                 S_O = (S_T .* S_H) # Calculate overall stress
                 stress_t[i,j] = mean(S_T)
                 stress_h[i,j] = mean(S_H)
@@ -870,7 +868,7 @@ function simulation_run2(parasource::String, s1::Int)
             #println("Starting dispersal routine.")
             dispersal!(landscape)
             #println("Starting reproduction routine.")
-            demographics(landscape,α,T_ref,0,grad,300,immi,p_immi,e_immi)
+            demographics(landscape,α,0,grad,300,immi,p_immi,e_immi)
             #println("End timestep $t.")
         end
     end
@@ -882,7 +880,7 @@ function simulation_run2(parasource::String, s1::Int)
         #println("Starting dispersal routine.")
         dispersal!(landscape)
         #println("Starting reproduction routine.")
-        demographics(landscape,α,T_ref,trend[t],grad,300,immi,p_immi,e_immi,burnin)
+        demographics(landscape,α,trend[t],grad,300,immi,p_immi,e_immi)
         #println("End timestep $t.")
     end
     println("End time loop. Analyzing landscape.")
