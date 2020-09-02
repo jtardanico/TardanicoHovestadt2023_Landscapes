@@ -20,6 +20,8 @@ using DelimitedFiles
 using Plots
 using Random
 using StatsBase
+using DataFrames
+using CSV
 
 #--------------------------
 # Input Files
@@ -88,6 +90,17 @@ function weightedmean(means,weights)
     return wm
 end
 
+function shannon(i)
+    p = i ./ sum(i[1:length(i)])
+    h = -sum(p.*log.(p))
+    return h
+end
+
+function simpson(i)
+    p = i ./ sum(i[1:length(i)])
+    λ =  sum(p.^2)
+    return λ
+end
 
 
 #-------------------------
@@ -235,6 +248,7 @@ end
 # rise2: Rising mean with random variation
 # none: Default trend if no other is specified. Constant with no random variation
 function generate_climate_trend(nsteps::Int,mean,sd,trend_type::Int)
+    println("nsteps=$nsteps")
     if trend_type == 1
         global trend = rand(Normal(mean,sd),nsteps) # Random variation, constant mean
     elseif trend_type == 2
@@ -305,8 +319,52 @@ function generate_world(dim_x::Int,dim_y::Int)
     end
 end
 
+function mutate(landscape::Array{TPatch,2})
+    for i in 1:length(landscape[1:end,1]) # loop over landscpae length
+        for j in length(landscape[1,1:end]) # loop over landscape width
+            if length(landscape[i,j].species[1:end])>0
+                for p in 1:length(landscape[i,j].species[1:end]) # loop over species
+                    if length(landscape[i,j].species[p][1:end,1])>0
+                        for q in length(landscape[i,j].species[p][1:end,1]) # loop over individuals
+                            landscape[i,j].species[p][q,2] = landscape[i,j].species[p][q,2] + rand(Normal(0,0.05))# Temperature optimum
+                            #println("topt = $(landscape[i,j].species[p][q,2])")
+                            landscape[i,j].species[p][q,3] = landscape[i,j].species[p][q,3] * rand(LogitNormal(0,0.05))# Temperature tolerance
+                            #println("tsd = $(landscape[i,j].species[p][q,3])")
+                            landscape[i,j].species[p][q,4] = landscape[i,j].species[p][q,4] + rand(Normal(0,0.05))# Habitat optimum
+                            #println("hopt = $(landscape[i,j].species[p][q,4])")
+                            landscape[i,j].species[p][q,5] = landscape[i,j].species[p][q,5] * rand(LogitNormal(0,0.05))# Habitat tolerance
+                            #println("hsd = $(landscape[i,j].species[p][q,5])")
+                             d = landscape[i,j].species[p][q,6] + rand(Normal(0,0.05))# Dispersal chance
+                             #println("d=$d")
+                             if d < 0
+                                 d = 0
+                                 #println("d set to $d")
+                             elseif d > 1
+                                 d = 1
+                                 #println("d set to $d")
+                             end
+                             landscape[i,j].species[p][q,7] = d
+                             #println("displ = $(landscape[i,j].species[p][q,6])")
+                             d = landscape[i,j].species[p][q,7] + rand(Normal(0,0.05)) # Global dispersal
+                             if d < 0
+                                 d = 0
+                                 #println("d set to $d")
+                             elseif d > 1
+                                 d = 1
+                                 #println("d set to $d")
+                             end
+                             landscape[i,j].species[p][q,7] = d
+                             #println("dispg = $(landscape[i,j].species[p][q,7])")
+                        end # end individuals loop
+                    end  # end individual pop length check
+                end # end species loop
+            end # end species length check
+        end # end landscape width loop
+    end # end landscape length loop
+end # end function
+
 # Calculates number of offspring for each individual. Offspring form the next generation of individuals.
-function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int, immi,p_immi,e_immi)
+function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int,burnin, immi,p_immi,e_immi)
     #println("Starting demographics routine...")
     for i in 1:length(landscape[1:end,1]) # begin landscape length loop
         for j in 1:length(landscape[1,1:end]) # Begin landscape width loop
@@ -586,15 +644,89 @@ function set_filename(argumentsdict::Dict, par::Dict,clim,grad)
     return filename,tempsource,envsource
 end
 
-# Calculates species richness for a single patch
-function patch_species_richness(landscape::Array{TPatch,2},row::Int,col::Int)
-    rich = 0
-    for p in 1:length(species_list[1:end,1])
-        if length(landscape[row,col].species[p][1:end,1]) > 0
-            rich += 1
+# Counts the total population in the landscape
+function popcount(landscape)
+    x = 0
+    for i in 1:length(landscape[1:end,1])
+        for j in 1:length(landscape[1,1:end])
+            for l in length(landscape[i,j].species[1:end])
+                x = x + length(landscape[i,j].species[l][1:end,1])
+            end
         end
     end
-    return rich
+    println("landscape population: $x")
+    return x
+end
+
+# Calculates landscape-wide arithmetic means and variance for traits
+function traitmeans(landscape)
+    obs = 0
+    sumtopt = 0
+    sumtsd = 0
+    sumhopt = 0
+    sumhsd = 0
+    sumdisp = 0
+    sumdispg = 0
+    for i in 1:length(landscape[1:end,1])
+        for j in 1:length(landscape[1,1:end])
+            for l in length(landscape[i,j].species[1:end])
+                obs=obs+length(landscape[i,j].species[l][1:end,1])
+                sumtopt = sumtopt + sum(landscape[i,j].species[l][1:end,2])
+                sumtsd = sumtsd + sum(landscape[i,j].species[l][1:end,3])
+                sumhopt = sumhopt + sum(landscape[i,j].species[l][1:end,4])
+                sumhsd = sumhsd + sum(landscape[i,j].species[l][1:end,5])
+                sumdisp = sumdisp + sum(landscape[i,j].species[l][1:end,6])
+                sumdispg = sumdispg + sum(landscape[i,j].species[l][1:end,7])
+            end
+        end
+    end
+    meantopt = sumtopt/obs
+    meantsd = sumtsd/obs
+    meanhopt = sumhopt/obs
+    meanhsd = sumhsd/obs
+    meandisp = sumdisp/obs
+    meandispg = sumdispg/obs
+    for i in 1:length(landscape[1:end,1])
+        for j in 1:length(landscape[1,1:end])
+            for l in length(landscape[i,j].species[1:end])
+                sumtopt = sumtopt + sum((landscape[i,j].species[l][1:end,2] - meantopt)^2)
+                sumtsd = sumtsd + sum((landscape[i,j].species[l][1:end,3] - meantsd)^2)
+                sumhopt = sumhopt + sum((landscape[i,j].species[l][1:end,4] - meanhopt)^2)
+                sumhsd = sumhsd + sum((landscape[i,j].species[l][1:end,5] - meanhsd)^2)
+                sumdisp = sumdisp + sum((landscape[i,j].species[l][1:end,6] - meandisp)^2)
+                sumdispg = sumdispg + sum((landscape[i,j].species[l][1:end,7] - meandispg)^2)
+            end
+        end
+    end
+    vartopt = sumtopt/obs
+    vartsd = sumtsd/obs
+    varhopt = sumhopt/obs
+    varhsd = sumhsd/obs
+    vardisp = sumdisp/obs
+    vardispg = sumdisp/obs
+    return meantopt,meantsd,meanhopt,meanhsd,meandisp,meandispg,vartopt,vartsd,varhopt,varhsd,vardisp,vardispg
+end
+
+# Calculates species richness for a single patch
+function landscape_div(landscape::Array{TPatch,2})
+    lineages = Array{String,1}(undef,0)
+    for i in 1:length(landscape[1:end,1])
+        for j in 1:length(landscape[1,1:end])
+            for l in length(landscape[i,j].species[1:end])
+                lineages = [lineages;landscape[i,j].species[l][1:end,10]]
+            end
+        end
+    end
+    rich = length(unique(lineages))
+    div = DataFrame()
+    div.lineages = lineages
+    div.tally = 1
+    div = by(div,[:lineages]) do div
+        DataFrame(count=sum(div.tally))
+    end
+    simp = simpson(div.count)
+    shan = shannon(div.count)
+    return rich,simp,shan
 end
 
 # Counts population for each species in each patch and outputs them to an array with dimensions
@@ -719,41 +851,40 @@ function mean_stress(landscape::Array{TPatch,2}, trend)
     return stress_t,stress_h,stress_o
 end
 
-# Currently broken
-function write_sp_list(species_list,directory)
-    rows = length(species_list[1:end,1])
-    cols = length(species_list[1,1:(end-1)])
-    col_names = ["ID" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max"]
-    outputname = string(directory,"Sp_list",".txt")
-    open(outputname, "a") do IO
-        writedlm(IO, col_names)
-        for i in 1:rows
-            for j in 1:cols
-                writedlm(IO, species_list[i,j])
-            end
+function write_landscape_stats(landscape,directory,filename,replicate,timestep,s_clim,trend,grad,H_t,H_h,α,bmax)
+    outputname=string(directory,filename,"trend.txt")
+    col_names = ["Replicate" "Timestep" "Pop" "T_opt" "T_sd" "H_opt" "H_sd" "disp" "disp_g" "clim_scen" "trend" "grad" "H_t" "H_h" "alpha"]
+    T_opt, T_sd, H_opt, H_sd, disp, disp_g, VT_opt, VT_sd, VH_opt, VH_sd, Vdisp, Vdisp_g = traitmeans(landscape)
+    rich, simp, shan = landscape_div(landscape)
+    pop = popcount(landscape)
+    open(outputname,"a") do IO
+        if timestep==-1 && replicate==1
+            writedlm(IO,col_names)
         end
+        writedlm(IO, [replicate timestep pop rich simp shan T_opt T_sd H_opt H_sd disp disp_g VT_opt VT_sd VH_opt VH_sd Vdisp Vdisp_g s_clim trend grad H_t H_h α])
     end
 end
 
 # Writes the full landscape data to a .csv file, including every individual in every patch.
 # Caution: Very large data file.
-function write_landscape_csv(landscape,directory,filename,timestep,s_clim,grad,H_t,H_h,α)
+function write_landscape_csv(landscape,directory,filename,replicate,timestep,s_clim,trend,grad,H_t,H_h,α)
     outputname = string(directory,filename,".txt")
     rows = length(landscape[1:end,1])
     cols = length(landscape[1,1:end])
     n_species = length(landscape[1,1].species[1:end,1])
-    col_names = ["ID" "Timestep" "H_t" "H_h" "alpha" "clim_scen" "gradient" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "LineageID" "temp_t" "precip_t" "habitat"]
+    col_names = ["ID" "Replicate" "Timestep" "H_t" "H_h" "alpha" "clim_scen" "gradient" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "LineageID" "temp_t" "precip_t" "habitat"]
     open(outputname, "a") do IO
-        if timestep==-1
+        if timestep==-1 && replicate==1
             writedlm(IO, col_names)
         end
         for i in 1:rows
             for j in 1:cols
                 for k in 1:n_species
-                    for l in 1:length(landscape[i,j].species[k][1:end,1]) # <--- Timestep is not read correctly in this portion of the loop
+                    for l in 1:length(landscape[i,j].species[k][1:end,1])
                         lin = Int(landscape[i,j].species[k][l,10])
                         lineageID = string(lin, base=16)
-                        writedlm(IO, [k timestep H_t H_h α s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID landscape[i,j].temp_t landscape[i,j].precip_t landscape[i,j].habitat])
+                        temperature = landscape[i,j].temp_t + trend
+                        writedlm(IO, [k replicate timestep H_t H_h α s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID temperature landscape[i,j].precip_t landscape[i,j].habitat])
                     end
                 end
             end
@@ -831,6 +962,14 @@ function get_patch_values(x::Int, y::Int)
     println("Habitat = $(landscape[x,y].habitat)")
 end
 
+function checkarray(array)
+    for i in 1:length(array)
+        println("$i : $(array[i])")
+    end
+end
+
+
+
 #----------------------------------------------
 # Main Program
 #----------------------------------------------
@@ -845,50 +984,66 @@ function simulation_run2(parasource::String, s1::Int)
     ArgDict = read_arguments()
     bmax = par["bmax"]
     tmax = par["tmax"]
+    rmax = par["rmax"]
     grad = par["grad"]
     α = par["α"]
     T_ref = par["T_ref"]
     immi = par["immi"]
+    mut = par["mutate"]
     p_immi = par["p_immi"]
     e_immi = par["e_immi"]
     dir = par["dir"]
     println(dir)
     filename,tempsource,envsource = set_filename(ArgDict,par,s1,grad)
     Random.seed!(123)
-    println("Initializing world.")
-    init_world(tempsource,envsource,grad)
-    generate_climate_trend(tmax,0,1,s1)
-    init_spp2()
-    write_landscape_csv(landscape,dir,filename,-1,s1,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
-    println("Starting burn-in period.")
-    if ArgDict["burninperiod"] == true
-        for b in 1:bmax
-            burnin = true
-            println("Beginning timestep $b.")
+    for rep in 1:rmax
+        println("Initializing world.")
+        init_world(tempsource,envsource,grad)
+        generate_climate_trend(tmax,0,1,s1)
+        println(length(trend))
+        init_spp2()
+        write_landscape_stats(landscape,dir,filename,rep,-1,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+        write_landscape_csv(landscape,dir,filename,rep,-1,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
+        println("Starting burn-in period.")
+        if ArgDict["burninperiod"] == true
+            for b in 1:bmax
+                burnin = true
+                println("Beginning timestep $b.")
+                #println("Starting dispersal routine.")
+                dispersal!(landscape)
+                #println("Starting reproduction routine.")
+                demographics(landscape,α,0,grad,300,burnin,immi,p_immi,e_immi)
+                if mut==true
+                    mutate(landscape)
+                end
+                write_landscape_stats(landscape,dir,filename,rep,b,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+                #println("End timestep $t.")
+            end
+        end
+        write_landscape_csv(landscape,dir,filename,rep,0,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
+        println("Starting ")
+        for t in 1:tmax
+            burnin = false
+            println("Beginning timestep $t.")
             #println("Starting dispersal routine.")
             dispersal!(landscape)
             #println("Starting reproduction routine.")
-            demographics(landscape,α,0,grad,300,immi,p_immi,e_immi)
+            demographics(landscape,α,trend[t],grad,300,burnin,immi,p_immi,e_immi)
+            if mut==true
+                mutate(landscape)
+            end
+            step=t+bmax
+            write_landscape_stats(landscape,dir,filename,rep,step,s1,trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
             #println("End timestep $t.")
         end
+        popcount(landscape)
+        println("End time loop. Analyzing landscape.")
+        #diversity_analysis(landscape)
+        #trait_analysis(landscape)
+        #env_analysis(landscape,trend[tmax])
+        #heatmaps(richness,temperatures,habitat,pops,trait_means,filename,dir)
+        write_landscape_csv(landscape,dir,filename,rep,tmax,s1,trend[tmax],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
     end
-    write_landscape_csv(landscape,dir,filename,0,s1,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
-    println("Starting ")
-    for t in 1:tmax
-        burnin = false
-        println("Beginning timestep $t.")
-        #println("Starting dispersal routine.")
-        dispersal!(landscape)
-        #println("Starting reproduction routine.")
-        demographics(landscape,α,trend[t],grad,300,immi,p_immi,e_immi)
-        #println("End timestep $t.")
-    end
-    println("End time loop. Analyzing landscape.")
-    #diversity_analysis(landscape)
-    #trait_analysis(landscape)
-    #env_analysis(landscape,trend[tmax])
-    #heatmaps(richness,temperatures,habitat,pops,trait_means,filename,dir)
-    write_landscape_csv(landscape,dir,filename,tmax,s1,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
     #write_sp_list(species_list,dir)
     println("Program complete.")
 end
