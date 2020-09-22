@@ -328,11 +328,11 @@ function mutate(landscape::Array{TPatch,2})
                         for q in length(landscape[i,j].species[p][1:end,1]) # loop over individuals
                             landscape[i,j].species[p][q,2] = landscape[i,j].species[p][q,2] + rand(Normal(0,0.05))# Temperature optimum
                             #println("topt = $(landscape[i,j].species[p][q,2])")
-                            landscape[i,j].species[p][q,3] = landscape[i,j].species[p][q,3] * rand(LogitNormal(0,0.05))# Temperature tolerance
+                            landscape[i,j].species[p][q,3] = landscape[i,j].species[p][q,3] * (rand(LogitNormal(0,0.05)))# Temperature tolerance
                             #println("tsd = $(landscape[i,j].species[p][q,3])")
                             landscape[i,j].species[p][q,4] = landscape[i,j].species[p][q,4] + rand(Normal(0,0.05))# Habitat optimum
                             #println("hopt = $(landscape[i,j].species[p][q,4])")
-                            landscape[i,j].species[p][q,5] = landscape[i,j].species[p][q,5] * rand(LogitNormal(0,0.05))# Habitat tolerance
+                            landscape[i,j].species[p][q,5] = landscape[i,j].species[p][q,5] * (rand(LogitNormal(0,0.05)))# Habitat tolerance
                             #println("hsd = $(landscape[i,j].species[p][q,5])")
                              d = landscape[i,j].species[p][q,6] + rand(Normal(0,0.05))# Dispersal chance
                              #println("d=$d")
@@ -689,12 +689,12 @@ function traitmeans(landscape)
     for i in 1:length(landscape[1:end,1])
         for j in 1:length(landscape[1,1:end])
             for l in length(landscape[i,j].species[1:end])
-                sumtopt = sumtopt + sum((landscape[i,j].species[l][1:end,2] - meantopt)^2)
-                sumtsd = sumtsd + sum((landscape[i,j].species[l][1:end,3] - meantsd)^2)
-                sumhopt = sumhopt + sum((landscape[i,j].species[l][1:end,4] - meanhopt)^2)
-                sumhsd = sumhsd + sum((landscape[i,j].species[l][1:end,5] - meanhsd)^2)
-                sumdisp = sumdisp + sum((landscape[i,j].species[l][1:end,6] - meandisp)^2)
-                sumdispg = sumdispg + sum((landscape[i,j].species[l][1:end,7] - meandispg)^2)
+                sumtopt = sumtopt + sum((landscape[i,j].species[l][1:end,2] .- meantopt).^2)
+                sumtsd = sumtsd + sum((landscape[i,j].species[l][1:end,3] .- meantsd).^2)
+                sumhopt = sumhopt + sum((landscape[i,j].species[l][1:end,4] .- meanhopt).^2)
+                sumhsd = sumhsd + sum((landscape[i,j].species[l][1:end,5] .- meanhsd).^2)
+                sumdisp = sumdisp + sum((landscape[i,j].species[l][1:end,6] .- meandisp).^2)
+                sumdispg = sumdispg + sum((landscape[i,j].species[l][1:end,7] .- meandispg).^2)
             end
         end
     end
@@ -717,16 +717,24 @@ function landscape_div(landscape::Array{TPatch,2})
             end
         end
     end
+
     rich = length(unique(lineages))
-    div = DataFrame()
-    div.lineages = lineages
-    div.tally = 1
-    div = by(div,[:lineages]) do div
-        DataFrame(count=sum(div.tally))
+    if rich > 0
+        div = DataFrame()
+        div.lineages = lineages
+        div.tally = 1
+        div = by(div,[:lineages]) do div
+            DataFrame(count=sum(div.tally))
+        end
+        simp = simpson(div.count)
+        shan = shannon(div.count)
+        return rich,simp,shan
+    else
+        rich = 0
+        simp = "NA"
+        shan = "NA"
+        return rich,simp,shan
     end
-    simp = simpson(div.count)
-    shan = shannon(div.count)
-    return rich,simp,shan
 end
 
 # Counts population for each species in each patch and outputs them to an array with dimensions
@@ -853,7 +861,7 @@ end
 
 function write_landscape_stats(landscape,directory,filename,replicate,timestep,s_clim,trend,grad,H_t,H_h,α,bmax)
     outputname=string(directory,filename,"trend.txt")
-    col_names = ["Replicate" "Timestep" "Pop" "T_opt" "T_sd" "H_opt" "H_sd" "disp" "disp_g" "clim_scen" "trend" "grad" "H_t" "H_h" "alpha"]
+    col_names = ["Replicate" "Timestep" "Pop" "rich" "simp" "shan" "T_opt" "T_sd" "H_opt" "H_sd" "disp" "disp_g" "VT_opt" "VT_sd" "VH_opt" "VH_sd" "Vdisp" "Vdisp_g" "clim_scen" "trend" "grad" "H_t" "H_h" "alpha"]
     T_opt, T_sd, H_opt, H_sd, disp, disp_g, VT_opt, VT_sd, VH_opt, VH_sd, Vdisp, Vdisp_g = traitmeans(landscape)
     rich, simp, shan = landscape_div(landscape)
     pop = popcount(landscape)
@@ -881,7 +889,8 @@ function write_landscape_csv(landscape,directory,filename,replicate,timestep,s_c
             for j in 1:cols
                 for k in 1:n_species
                     for l in 1:length(landscape[i,j].species[k][1:end,1])
-                        lin = Int(landscape[i,j].species[k][l,10])
+                        #println("lin ID = ",string(landscape[i,j].species[k][l,10]))
+                        lin = Int(round(landscape[i,j].species[k][l,10]))
                         lineageID = string(lin, base=16)
                         temperature = landscape[i,j].temp_t + trend
                         writedlm(IO, [k replicate timestep H_t H_h α s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID temperature landscape[i,j].precip_t landscape[i,j].habitat])
@@ -1016,11 +1025,14 @@ function simulation_run2(parasource::String, s1::Int)
                 if mut==true
                     mutate(landscape)
                 end
-                write_landscape_stats(landscape,dir,filename,rep,b,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+                if mod(b,50)==true || b==bmax
+                    write_landscape_stats(landscape,dir,filename,rep,b,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+                    #write_landscape_csv(landscape,dir,filename,rep,b,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+                end
                 #println("End timestep $t.")
             end
         end
-        write_landscape_csv(landscape,dir,filename,rep,0,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
+        #write_landscape_csv(landscape,dir,filename,rep,0,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
         println("Starting ")
         for t in 1:tmax
             burnin = false
@@ -1033,7 +1045,10 @@ function simulation_run2(parasource::String, s1::Int)
                 mutate(landscape)
             end
             step=t+bmax
-            write_landscape_stats(landscape,dir,filename,rep,step,s1,trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+            if mod(t,50)==0 || t==tmax
+                write_landscape_stats(landscape,dir,filename,rep,step,s1,trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+                #write_landscape_csv(landscape,dir,filename,rep,step,s1,trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+            end
             #println("End timestep $t.")
         end
         popcount(landscape)
