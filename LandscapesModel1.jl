@@ -222,6 +222,7 @@ end
 
 # Initialized a population of individuals with randomized trait values
 function init_popgrad(n_pop::Int,mean,sd)
+    println("init_popgrad")
     n_traits = 10
     patchpop = Array{Array{Float32,2},1}(undef,1)
     population = Array{Float32,2}(undef,n_pop,n_traits)
@@ -248,6 +249,7 @@ end
 # rise2: Rising mean with random variation
 # none: Default trend if no other is specified. Constant with no random variation
 function generate_climate_trend(nsteps::Int,mean,sd,trend_type::Int)
+    #println("generate_climate_trend")
     println("nsteps=$nsteps")
     if trend_type == 1
         global trend = rand(Normal(mean,sd),nsteps) # Random variation, constant mean
@@ -278,6 +280,7 @@ end
 # Initializes a landscape from file inputs.
 # 'gradient' defines landscape gradient steepness
 function init_world(worldtempsource::String,worldenvsource::String,gradient)
+    #println("init_world")
     temperatures, environments = read_world_source(worldtempsource,worldenvsource)
     temperatures = temperatures * gradient
     environments = environments * gradient
@@ -291,6 +294,12 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient)
             row = i
             col = j
             patchpop = init_popgrad(100,0.5,0.5)
+            #if (i==1 ) && (j==1)
+            #    patchpop = init_popgrad(100,0.5,0.5)
+            #else
+            #    patchpop = Array{Array{Float32,2},1}(undef,1)
+            #    patchpop[1] = Array{Float32,2}(undef,0,10)
+            #end
             temp = temperatures[i,j]
             habitat = environments[i,j]
             precip = 0
@@ -320,6 +329,7 @@ function generate_world(dim_x::Int,dim_y::Int)
 end
 
 function mutate(landscape::Array{TPatch,2})
+    #println("mutation")
     for i in 1:length(landscape[1:end,1]) # loop over landscpae length
         for j in length(landscape[1,1:end]) # loop over landscape width
             if length(landscape[i,j].species[1:end])>0
@@ -365,7 +375,7 @@ end # end function
 
 # Calculates number of offspring for each individual. Offspring form the next generation of individuals.
 function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int,burnin, immi,p_immi,e_immi)
-    #println("Starting demographics routine...")
+    #println("demographics")
     for i in 1:length(landscape[1:end,1]) # begin landscape length loop
         for j in 1:length(landscape[1,1:end]) # Begin landscape width loop
             offspring = Array{Array{Int,1},1}(undef,length(landscape[i,j].species[1:end])) # List of offspring for all species
@@ -411,7 +421,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                     end
                     #println("Species $p has $surviving surviving offspring.")
                     if sum(surviving) > 0 # Check number of survivors
-                        if burnin==false && immi==true && rand() <= p_immi
+                        if burnin==false && immi==true && rand() <= p_immi # Check burn in and immi conditions
                             immigrants = rand(Poisson(e_immi))
                             lenx = sum(surviving) + immigrants # make e_immi a dictionary parameter
                             newgen = Array{Float32,2}(undef,lenx,length(landscape[i,j].species[p][1,1:end])) # Creates an array of length sum(offspring) with data for species p
@@ -420,6 +430,8 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                                 if surviving[q] > 0
                                     for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
                                         newgen[ind,1:end] = landscape[i,j].species[p][q,1:end]  #
+                                        newgen[ind,9] = false
+                                        #println("$(newgen[ind,9])")
                                         ind += 1
                                     end # End loop over survivng offspring
                                 end # End if statement
@@ -448,6 +460,8 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                                 if surviving[q] > 0
                                     for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
                                         newgen[ind,1:end] = landscape[i,j].species[p][q,1:end]  #
+                                        newgen[ind,9] = false
+                                        #println("$(newgen[ind,9])")
                                         ind += 1
                                     end # End loop over surviving offspring
                                 end # End if statement
@@ -474,6 +488,7 @@ end # End function
 # Function will try to get a new target if the current target patch is the same as the natal patch.
 # The function will also check if the target is outside the landscape.
 function get_target_local(nrows::Int,ncols::Int,i::Int,j::Int)
+    #println("get_target_local")
     #println("Getting local dispersal target patch...")
     target_row = i + rand(-1:1)
     target_col = j + rand(-1:1)
@@ -501,6 +516,7 @@ end
 # to select a new target if the current target is the same as the natal patch.
 # Note: It is currently not possible for global dispersal to move an individual out of the landscape. May be subject to change.
 function get_target_global(nrows::Int,ncols::Int,i::Int,j::Int)
+    #println("get_target_global")
     #println("Getting global dispersal target patch...")
     target_row = rand(1:length(landscape[1:end,1]))
     target_col = rand(1:length(landscape[1,1:end]))
@@ -522,13 +538,17 @@ function get_target_global(nrows::Int,ncols::Int,i::Int,j::Int)
 end
 
 function disperse_local(trow_l::Int, tcol_l::Int, outofbounds_l::Bool, i::Int, j::Int, k::Int, l::Int)
-    #println("Initiating local dispersal")
+    #println("disperse_local")
     #println("outofbounds = $outofbounds_l")
     if outofbounds_l == false
         global landscape[i,j].species[k][l,9] = true # Change dispersed flag to true
+        #println("migrant dispersed = $(landscape[i,j].species[k][l,9])")
         migrant = reshape(landscape[i,j].species[k][l,1:end],1,length(landscape[i,j].species[k][l,1:end])) # Reshapes vector from a 3 by 1 array to a 1 by 3 array. Needed for vcat to work.
+        #println("migrant = $migrant")
         global landscape[trow_l,tcol_l].species[k] = vcat(landscape[trow_l,tcol_l].species[k],migrant) # Adds the individual to the target patch.
-        #println("Added individual of species $k to patch $trow_l, $tcol_l")
+        #newindex = length(landscape[trow_l,tcol_l].species[k])
+        #println("individual at $trow_l $tcol_l $k = $(landscape[trow_l,tcol_l].species[k][newindex,1:end])")
+        #println("Added individual of species $k to patch $trow_l, $tcol_l ")
         global landscape[i,j].species[k] = landscape[i,j].species[k][setdiff(1:end,l),:] # Removes the individual from the natal patch
         #println("Removed individual of species $k from patch $i, $j")
     else
@@ -554,6 +574,7 @@ function disperse_global(trow_g::Int,tcol_g::Int,outofbounds_g::Bool,i::Int,j::I
 end
 
 function dispersal!(landscape::Array{TPatch,2})
+    #println("dispersal!")
     nrows = length(landscape[1:end,1])
     ncols = length(landscape[1,1:end])
     for i in 1:length(landscape[1:end,1]) # Begin landscape row loop
@@ -561,23 +582,38 @@ function dispersal!(landscape::Array{TPatch,2})
         for j in 1:length(landscape[1,1:end]) # Begin landscape column loops
             #println("Col $j")
             if length(landscape[i,j].species)>0 # Check number of species
+                #println("species length check")
                 for k in 1:length(landscape[i,j].species) # loop across species
-                    sp_pop = length(landscape[i,j].species[k][1:end,1])
+                    #println("species loop")
+                    #sp_pop = length(landscape[i,j].species[k][1:end,1])
                     #println("Species $k pop. = $sp_pop")
+                    popsize = length(landscape[i,j].species[k][1:end,1])
+                    #println("pop = $popsize")
                     if length(landscape[i,j].species[k][1:end,1])>0 # Check population size
+                        #println("pop size check")
                         l = 0
                         while l < length(landscape[i,j].species[k][1:end,1])
+                            #println("while loop")
                             l += 1
-                            d_local = rand()
+                            #println("$(landscape[i,j].species[k][l,9])")
                             #d_global = rand()
                             #println("Individual $l: d_local = $d_local, d_global = $d_global")
                             if landscape[i,j].species[k][l,9] == false
+                                #println("Individual has not dispersed. Checking roll against disp")
+                                d_local = rand()
+                                #println("disp = $(landscape[i,j].species[k][l,6]), roll = $d_local")
+                                #println("roll <= disp = $(d_local<=landscape[i,j].species[k][l,6])")
                                 if d_local<=landscape[i,j].species[k][l,6] # Check vs. dispersal probability (trait 6)
+                                    #println("Individual disperses, checking mode")
                                     d_global = rand()
+                                    #println("Roll = $d_global")
+                                    #println("Roll <= disp_g = $(d_global <= landscape[i,j].species[k][l,7])")
                                     if d_global <= landscape[i,j].species[k][l,7] # Check vs. global dispersal probability (trait 7)
+                                        #println("Getting global dispersal target")
                                         trow_g, tcol_g, outofbounds_g = get_target_global(nrows,ncols,i,j)
                                         disperse_global(trow_g,tcol_g,outofbounds_g,i,j,k,l)
                                     else
+                                        #println("Getting local dispersal target")
                                         trow_l, tcol_l, outofbounds_l = get_target_local(nrows,ncols,i,j)
                                         disperse_local(trow_l,tcol_l,outofbounds_l,i,j,k,l)
                                     end # End if-else statement
@@ -686,24 +722,30 @@ function traitmeans(landscape)
     meanhsd = sumhsd/obs
     meandisp = sumdisp/obs
     meandispg = sumdispg/obs
+    ssqtopt = 0
+    ssqtsd = 0
+    ssqhopt = 0
+    ssqhsd = 0
+    ssqdisp = 0
+    ssqdispg = 0
     for i in 1:length(landscape[1:end,1])
         for j in 1:length(landscape[1,1:end])
             for l in length(landscape[i,j].species[1:end])
-                sumtopt = sumtopt + sum((landscape[i,j].species[l][1:end,2] .- meantopt).^2)
-                sumtsd = sumtsd + sum((landscape[i,j].species[l][1:end,3] .- meantsd).^2)
-                sumhopt = sumhopt + sum((landscape[i,j].species[l][1:end,4] .- meanhopt).^2)
-                sumhsd = sumhsd + sum((landscape[i,j].species[l][1:end,5] .- meanhsd).^2)
-                sumdisp = sumdisp + sum((landscape[i,j].species[l][1:end,6] .- meandisp).^2)
-                sumdispg = sumdispg + sum((landscape[i,j].species[l][1:end,7] .- meandispg).^2)
+                ssqtopt = ssqtopt + sum((landscape[i,j].species[l][1:end,2] .- meantopt).^2)
+                ssqtsd = ssqtsd + sum((landscape[i,j].species[l][1:end,3] .- meantsd).^2)
+                ssqhopt = ssqhopt + sum((landscape[i,j].species[l][1:end,4] .- meanhopt).^2)
+                ssqhsd = ssqhsd + sum((landscape[i,j].species[l][1:end,5] .- meanhsd).^2)
+                ssqdisp = ssqdisp + sum((landscape[i,j].species[l][1:end,6] .- meandisp).^2)
+                ssqdispg = ssqdispg + sum((landscape[i,j].species[l][1:end,7] .- meandispg).^2)
             end
         end
     end
-    vartopt = sumtopt/obs
-    vartsd = sumtsd/obs
-    varhopt = sumhopt/obs
-    varhsd = sumhsd/obs
-    vardisp = sumdisp/obs
-    vardispg = sumdisp/obs
+    vartopt = ssqtopt/obs
+    vartsd = ssqtsd/obs
+    varhopt = ssqhopt/obs
+    varhsd = ssqhsd/obs
+    vardisp = ssqdisp/obs
+    vardispg = ssqdispg/obs
     return meantopt,meantsd,meanhopt,meanhsd,meandisp,meandispg,vartopt,vartsd,varhopt,varhsd,vardisp,vardispg
 end
 
@@ -1017,7 +1059,7 @@ function simulation_run2(parasource::String, s1::Int)
         if ArgDict["burninperiod"] == true
             for b in 1:bmax
                 burnin = true
-                println("Beginning timestep $b.")
+                println("Beginning burn-in timestep $b.")
                 #println("Starting dispersal routine.")
                 dispersal!(landscape)
                 #println("Starting reproduction routine.")
@@ -1025,15 +1067,15 @@ function simulation_run2(parasource::String, s1::Int)
                 if mut==true
                     mutate(landscape)
                 end
-                if mod(b,50)==true || b==bmax
-                    write_landscape_stats(landscape,dir,filename,rep,b,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+                write_landscape_stats(landscape,dir,filename,rep,b,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+                #if mod(b,50)==true || b==bmax
                     #write_landscape_csv(landscape,dir,filename,rep,b,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
-                end
+                #end
                 #println("End timestep $t.")
             end
         end
         #write_landscape_csv(landscape,dir,filename,rep,0,s1,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
-        println("Starting ")
+        println("Starting main simulation")
         for t in 1:tmax
             burnin = false
             println("Beginning timestep $t.")
@@ -1045,10 +1087,10 @@ function simulation_run2(parasource::String, s1::Int)
                 mutate(landscape)
             end
             step=t+bmax
-            if mod(t,50)==0 || t==tmax
-                write_landscape_stats(landscape,dir,filename,rep,step,s1,trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+            write_landscape_stats(landscape,dir,filename,rep,step,s1,trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+            #if mod(t,50)==0 || t==tmax
                 #write_landscape_csv(landscape,dir,filename,rep,step,s1,trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
-            end
+            #end
             #println("End timestep $t.")
         end
         popcount(landscape)
@@ -1067,6 +1109,8 @@ end
 # Main Script
 #----------------------------------------------
 # s_clim is the climate scenario, s_grad is the gradient scenario
+#simulation_run2(parasource,0)
+
 @time for s_clim in 0:3
             simulation_run2(parasource,s_clim)
         end
