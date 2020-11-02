@@ -240,7 +240,7 @@ function init_popgrad(n_pop::Int,mean,sd)
         Disp_g = rand()       # Trait 7: Global dispersal probability
         Fert_max = 15       # Trait 8: Maximum number of offspring
         dispersed = false   # Trait 9: Whether or not individual has already dispersed
-        lineage = abs(rand(Int)) # Trait 10: Lineage identifier
+        lineage = rand(Float32) # Trait 10: Lineage identifier
         population[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage]
     end
     patchpop[1] = population
@@ -936,8 +936,8 @@ function write_landscape_csv(landscape,directory,filename,replicate,timestep,s_c
                 for k in 1:n_species
                     for l in 1:length(landscape[i,j].species[k][1:end,1])
                         #println("lin ID = ",string(landscape[i,j].species[k][l,10]))
-                        lin = Int(round(landscape[i,j].species[k][l,10]))
-                        lineageID = string(lin, base=16)
+                        lin = trunc(Int,(landscape[i,j].species[k][l,10]*10^15))
+                        lineageID = string(lin, base=62)
                         temperature = landscape[i,j].temp_t + trend
                         writedlm(IO, [k replicate timestep H_t H_h α s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID temperature landscape[i,j].precip_t landscape[i,j].habitat])
                     end
