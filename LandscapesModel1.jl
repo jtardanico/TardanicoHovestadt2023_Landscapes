@@ -50,10 +50,28 @@ end
 # Calculation Functions
 #---------------------
 
+# Calculates an individual's average number of offspring.
 function expected_fert(T_opt,T_sd,H_opt,H_sd,Fert_max, temp_t, habitat, α_t, α_h, trend)
     temp = temp_t + trend # Patch temperature
     e_fert = Fert_max * exp(-(temp-T_opt)^2/(2*T_sd^2)) * exp(-(habitat-H_opt)^2/(2*H_sd^2)) * exp(-T_sd^2/(2*α_t^2)) * exp(-H_sd^2/(2*α_h^2))
     return e_fert
+end
+
+# Calculates expected offspring. For use in calculating landscape average fitness (see write_landscape_stats)
+function expected_fert2(T_opt,T_sd,H_opt,H_sd,temp_t, habitat, α_t, α_h, trend)
+    #println("T_opt",size(T_opt))
+    #println("T_sd",size(T_sd))
+    #println("H_opt",size(H_opt))
+    #println("H_sd",size(H_sd))
+    #println("temp_t",size(temp_t))
+    #println("habitat",size(habitat))
+    #println("α",size(α_t))
+    #println("trend",size(trend))
+    temp = temp_t + trend # Patch temperature
+    t_fert = exp(-(temp-T_opt)^2/(2*T_sd^2)) * exp(-T_sd^2/(2*α_t^2))
+    h_fert = exp(-(habitat-H_opt)^2/(2*H_sd^2)) * exp(-H_sd^2/(2*α_h^2))
+    e_fert = t_fert * h_fert
+    return t_fert,h_fert,e_fert
 end
 
 # Function for calculating expected offspring mortality
@@ -65,12 +83,13 @@ function expected_mort(Fert_max, offspring, k)
 end
 
 # Function for calculating how stressful the environment of a patch is
-function stress(T_opt,T_sd,H_opt,H_sd,temp_t, habitat,trend)
+function stress(T_opt::Float32,T_sd::Float32,H_opt::Float32,H_sd::Float32,temp_t::Float32, habitat::Float32,trend::Float32)
     temp = temp_t + trend
     S_T = exp(-(temp-T_opt)^2/(2*T_sd^2))
     S_H = exp(-(habitat-H_opt)^2/(2*H_sd^2))
     return S_T, S_H
 end
+
 
 # Determines carry capacity for a species; may be removed/replaced later.
 function carry_capacity(k_0, S_T, S_H)
@@ -102,6 +121,10 @@ function simpson(i)
     return λ
 end
 
+# Exponential decay function. Rate should be a number between 0 and 1.
+function decay(initial,rate,time)
+    initial * exp(-(rate)*time)
+end
 
 #-------------------------
 # Data Input Functions
@@ -332,7 +355,9 @@ function generate_world(dim_x::Int,dim_y::Int)
     end
 end
 
-function mutate(landscape::Array{TPatch,2})
+# Makes random changes to the traits of each individual in the landscape. Standard deviation of the changes is provided by mutsd.
+function mutate(landscape::Array{TPatch,2},mut_sd,timestep)
+    mut_t = decay(mut_sd,(1/250),timestep)
     #println("mutation")
     for i in 1:length(landscape[1:end,1]) # loop over landscpae length
         for j in length(landscape[1,1:end]) # loop over landscape width
@@ -340,15 +365,15 @@ function mutate(landscape::Array{TPatch,2})
                 for p in 1:length(landscape[i,j].species[1:end]) # loop over species
                     if length(landscape[i,j].species[p][1:end,1])>0
                         for q in length(landscape[i,j].species[p][1:end,1]) # loop over individuals
-                            landscape[i,j].species[p][q,2] = landscape[i,j].species[p][q,2] + rand(Normal(0,0.05))# Temperature optimum
+                            landscape[i,j].species[p][q,2] = landscape[i,j].species[p][q,2] + rand(Normal(0,mut_t))# Temperature optimum
                             #println("topt = $(landscape[i,j].species[p][q,2])")
-                            landscape[i,j].species[p][q,3] = landscape[i,j].species[p][q,3] * (rand(LogitNormal(0,0.05)))# Temperature tolerance
+                            landscape[i,j].species[p][q,3] = landscape[i,j].species[p][q,3] * (rand(LogitNormal(0,mut_t)))# Temperature tolerance
                             #println("tsd = $(landscape[i,j].species[p][q,3])")
-                            landscape[i,j].species[p][q,4] = landscape[i,j].species[p][q,4] + rand(Normal(0,0.05))# Habitat optimum
+                            landscape[i,j].species[p][q,4] = landscape[i,j].species[p][q,4] + rand(Normal(0,mut_t))# Habitat optimum
                             #println("hopt = $(landscape[i,j].species[p][q,4])")
-                            landscape[i,j].species[p][q,5] = landscape[i,j].species[p][q,5] * (rand(LogitNormal(0,0.05)))# Habitat tolerance
+                            landscape[i,j].species[p][q,5] = landscape[i,j].species[p][q,5] * (rand(LogitNormal(0,mut_t)))# Habitat tolerance
                             #println("hsd = $(landscape[i,j].species[p][q,5])")
-                             d = landscape[i,j].species[p][q,6] + rand(Normal(0,0.05))# Dispersal chance
+                             d = landscape[i,j].species[p][q,6] + rand(Normal(0,mut_t))# Dispersal chance
                              #println("d=$d")
                              if d < 0
                                  d = 0
@@ -359,7 +384,7 @@ function mutate(landscape::Array{TPatch,2})
                              end
                              landscape[i,j].species[p][q,7] = d
                              #println("displ = $(landscape[i,j].species[p][q,6])")
-                             d = landscape[i,j].species[p][q,7] + rand(Normal(0,0.05)) # Global dispersal
+                             d = landscape[i,j].species[p][q,7] + rand(Normal(0,mut_t)) # Global dispersal
                              if d < 0
                                  d = 0
                                  #println("d set to $d")
@@ -698,6 +723,74 @@ function popcount(landscape)
     return x
 end
 
+#expected = expected_fert.(landscape[i,j].species[p][1:end,2],
+#           landscape[i,j].species[p][1:end,3],
+#           landscape[i,j].species[p][1:end,4],
+#           landscape[i,j].species[p][1:end,5],
+#           landscape[i,j].species[p][1:end,8],
+#           landscape[i,j].temp_t,
+#           landscape[i,j].habitat, niche_tradeoff,
+#           niche_tradeoff, trend)
+
+function fitnessmeans(landscape,trend,α)
+    obs = 0
+    sumft = 0
+    sumfh = 0
+    sumfit = 0
+    for i in 1:length(landscape[1:end,1])
+        for j in 1:length(landscape[1,1:end])
+            for l in length(landscape[i,j].species[1:end])
+                obs=obs+length(landscape[i,j].species[l][1:end,1])
+                if size(landscape[i,j].species[l])[1]>0
+                    for p in 1:length(landscape[i,j].species[l][1:end,1])
+                        ft,fh,fit = expected_fert2.(landscape[i,j].species[l][p,2],
+                                       landscape[i,j].species[l][p,3],
+                                       landscape[i,j].species[l][p,4],
+                                       landscape[i,j].species[l][p,5],
+                                       landscape[i,j].temp_t,
+                                       landscape[i,j].habitat,
+                                       α,α,trend)
+                        sumft = sumft + ft
+                        sumfh = sumfh + fh
+                        sumfit = sumfit + fit
+                    end
+                end
+            end
+        end
+    end
+    meanft = sumft/obs
+    meanfh = sumfh/obs
+    meanfit = sumfit/obs
+    ssqft = 0
+    ssqfh = 0
+    ssqfit = 0
+    for i in 1:length(landscape[1:end,1])
+        for j in 1:length(landscape[1,1:end])
+            for l in length(landscape[i,j].species[1:end])
+                if size(landscape[i,j].species[l])[1]>0
+                    for p in 1:length(landscape[i,j].species[l][1:end,1])
+                        ft,fh,fit = expected_fert2.(landscape[i,j].species[l][p,2],
+                                       landscape[i,j].species[l][p,3],
+                                       landscape[i,j].species[l][p,4],
+                                       landscape[i,j].species[l][p,5],
+                                       landscape[i,j].temp_t,
+                                       landscape[i,j].habitat,
+                                       α,α,trend)
+                        ssqft = ssqft + sum((ft - meanft)^2)
+                        ssqfh = ssqfh + sum((fh - meanfh)^2)
+                        ssqfit = ssqfit + sum((fit - meanfit)^2)
+                    end
+                end
+            end
+        end
+    end
+    varft = ssqft/obs
+    varfh = ssqfh/obs
+    varfit = ssqfit/obs
+
+    return meanft,meanfh,meanfit,varft,varfh,varfit
+end
+
 # Calculates landscape-wide arithmetic means and variance for traits
 function traitmeans(landscape)
     obs = 0
@@ -878,7 +971,7 @@ function env_analysis(landscape::Array{TPatch,2},trend_t)
     global habitat = habitat
 end
 
-# Calculates unweighted mean stress
+# Calculates unweighted mean stress for each patch
 function mean_stress(landscape::Array{TPatch,2}, trend)
     rows = length(landscape[1:end,1])
     cols = length(landscape[1,1:end])
@@ -907,15 +1000,18 @@ end
 
 function write_landscape_stats(landscape,directory,filename,replicate,timestep,s_clim,trend,grad,H_t,H_h,α,bmax)
     outputname=string(directory,filename,"trend.txt")
-    col_names = ["Replicate" "Timestep" "Pop" "rich" "simp" "shan" "T_opt" "T_sd" "H_opt" "H_sd" "disp" "disp_g" "VT_opt" "VT_sd" "VH_opt" "VH_sd" "Vdisp" "Vdisp_g" "clim_scen" "trend" "grad" "H_t" "H_h" "alpha"]
+    col_names1 = ["Replicate" "Timestep" "Pop" "rich" "simp" "shan" "T_opt" "T_sd" "H_opt" "H_sd" "disp" "disp_g" "VT_opt" "VT_sd" "VH_opt" "VH_sd" "Vdisp" "Vdisp_g"]
+    col_names2 = ["ft" "fh" "fit" "varft" "varfh" "varfit" "clim_scen" "trend" "grad" "H_t" "H_h" "alpha"]
+    col_names = hcat(col_names1,col_names2)
     T_opt, T_sd, H_opt, H_sd, disp, disp_g, VT_opt, VT_sd, VH_opt, VH_sd, Vdisp, Vdisp_g = traitmeans(landscape)
+    ft, fh, fit, varft, varfh, varfit = fitnessmeans(landscape,trend,α)
     rich, simp, shan = landscape_div(landscape)
     pop = popcount(landscape)
     open(outputname,"a") do IO
         if timestep==-1 && replicate==1
             writedlm(IO,col_names)
         end
-        writedlm(IO, [replicate timestep pop rich simp shan T_opt T_sd H_opt H_sd disp disp_g VT_opt VT_sd VH_opt VH_sd Vdisp Vdisp_g s_clim trend grad H_t H_h α])
+        writedlm(IO, [replicate timestep pop rich simp shan T_opt T_sd H_opt H_sd disp disp_g VT_opt VT_sd VH_opt VH_sd Vdisp Vdisp_g ft fh fit varft varfh varfit s_clim trend grad H_t H_h α])
     end
 end
 
@@ -1072,7 +1168,7 @@ function simulation_run2(parasource::String)
                 #println("Starting reproduction routine.")
                 demographics(landscape,α,0,grad,300,burnin,immi,p_immi,e_immi)
                 if mut==true
-                    mutate(landscape)
+                    mutate(landscape,0.05,b)
                 end
                 write_landscape_stats(landscape,dir,filename,rep,b,scen,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
                 if mod(b,50)==true || b==bmax
@@ -1084,6 +1180,7 @@ function simulation_run2(parasource::String)
         #write_landscape_csv(landscape,dir,filename,rep,0,scen,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
         println("Starting main simulation")
         for t in 1:tmax
+            step=t+bmax
             burnin = false
             #println("Beginning timestep $t.")
             #println("Starting dispersal routine.")
@@ -1091,9 +1188,8 @@ function simulation_run2(parasource::String)
             #println("Starting reproduction routine.")
             demographics(landscape,α,trend[t],grad,300,burnin,immi,p_immi,e_immi)
             if mut==true
-                mutate(landscape)
+                mutate(landscape,0.05,step)
             end
-            step=t+bmax
             write_landscape_stats(landscape,dir,filename,rep,step,scen,trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
             if mod(t,50)==0 || t==tmax
                 write_landscape_csv(landscape,dir,filename,rep,step,scen,trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
