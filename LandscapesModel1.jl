@@ -22,11 +22,12 @@ using Random
 using StatsBase
 using DataFrames
 using CSV
+using Printf
 
 #--------------------------
-# Input Files
+# Input Files -- DEPRECATED, INPUT VIA SHELL INSTEAD
 #--------------------------
-parasource = "/home/ubuntu/sims/model1/ParameterDict1.jl" # For use with HPC cluster
+#parasource = "/home/ubuntu/sims/model1/ParameterDict1.jl" # For use with HPC cluster
 #parasource = "/home/joseph/github/LandKlifModel/ParameterDict1.jl" # For use on local machine
 
 #---------------------
@@ -148,6 +149,8 @@ end
 function read_arguments()
     s=ArgParseSettings()
     @add_arg_table s begin
+        "--parasource","-n"
+            help = "parameter dictionary source file"
         "--tempsource", "-t" # Name of temperature source file in the shell script
             help = "Landscape temperature source file"
         "--envsource", "-e"
@@ -1032,7 +1035,7 @@ function write_landscape_csv(landscape,directory,filename,replicate,timestep,s_c
                 for k in 1:n_species
                     for l in 1:length(landscape[i,j].species[k][1:end,1])
                         #println("lin ID = ",string(landscape[i,j].species[k][l,10]))
-                        lin = trunc(Int,(landscape[i,j].species[k][l,10]*10^15))
+                        lin = parse(Int,(@sprintf("%.0f",landscape[i,j].species[k][l,10]*10^15)))
                         lineageID = string(lin, base=62)
                         temperature = landscape[i,j].temp_t + trend
                         writedlm(IO, [k replicate timestep H_t H_h α s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID temperature landscape[i,j].precip_t landscape[i,j].habitat])
@@ -1127,11 +1130,15 @@ end
 
 # Run simulation using landscape and parameters from input files. Requires inputs for temperature, environment,
 # scen,grad... are loop indices for different scenarios (e.g. climate trend, gradient strength)
-function simulation_run2(parasource::String)
+function simulation_run2()
     println("Starting.")
-    println("parasource = $parasource")
-    par = include(parasource)
     ArgDict = read_arguments()
+    println(ArgDict)
+    parasource = ArgDict["parasource"]
+    println(parasource)
+    println(typeof(parasource))
+    par = include(parasource)
+    scen = ArgDict["scenario"]
     bmax = par["bmax"]
     tmax = par["tmax"]
     rmax = par["rmax"]
@@ -1143,8 +1150,7 @@ function simulation_run2(parasource::String)
     p_immi = par["p_immi"]
     e_immi = par["e_immi"]
     dir = par["dir"]
-    scen = ArgDict["scenario"]
-    typeof(scen)
+    println("parasource = $parasource")
     println("Climate scenario $scen")
     println(dir)
     filename,tempsource,envsource = set_filename(ArgDict,par,scen,grad)
@@ -1191,7 +1197,7 @@ function simulation_run2(parasource::String)
                 mutate(landscape,0.05,step)
             end
             write_landscape_stats(landscape,dir,filename,rep,step,scen,trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
-            if mod(t,50)==0 || t==tmax
+            if mod(t,50)==0 && t>=9900 || t==tmax
                 write_landscape_csv(landscape,dir,filename,rep,step,scen,trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
             end
             #println("End timestep $t.")
@@ -1214,4 +1220,4 @@ end
 # s_clim is the climate scenario, s_grad is the gradient scenario
 #simulation_run2(parasource,0)
 
-@time simulation_run2(parasource)
+@time simulation_run2()

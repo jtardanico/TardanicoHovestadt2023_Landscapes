@@ -10,6 +10,6 @@ Dict{String,Any}(
 "mutate" => false,
 "p_immi" => 0.005,
 "e_immi" => 2.5,
-"dir" => "/home/ubuntu/outputfiles/test1/",
-#"dir" => "/home/joseph/Documents/PhD/LandklifModel/Landscapes/Model1/Experiment1/debug_testing18/",
+#"dir" => "/home/ubuntu/outputfiles/test1/",
+"dir" => "/home/joseph/Documents/PhD/LandklifModel/Landscapes/Model1/Experiment1/debug_testing18/",
 )
