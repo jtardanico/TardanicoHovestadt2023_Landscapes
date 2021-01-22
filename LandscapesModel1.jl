@@ -146,6 +146,7 @@ function read_world_source(worldtempsource::String,worldenvsource::String)
     end
 end
 
+# For reading in input from a shell script
 function read_arguments()
     s=ArgParseSettings()
     @add_arg_table s begin
@@ -364,8 +365,8 @@ function generate_world(dim_x::Int,dim_y::Int)
 end
 
 # Makes random changes to the traits of each individual in the landscape. Standard deviation of the changes is provided by mutsd.
-function mutate(landscape::Array{TPatch,2},mut_sd,timestep)
-    mut_t = decay(mut_sd,(1/2500),timestep)
+function mutate(landscape::Array{TPatch,2},mut_sd,mut_decay,timestep)
+    mut_t = decay(mut_sd,mut_decay,timestep)
     #println("mutation")
     for i in 1:length(landscape[1:end,1]) # loop over landscpae length
         for j in length(landscape[1,1:end]) # loop over landscape width
@@ -431,7 +432,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                                landscape[i,j].habitat, niche_tradeoff,
                                niche_tradeoff, trend) # Calculate expected offpring, see init_spp for trait key
                     #println("expected offspring = $expected")
-                    global x = expected
+                    global x = expected # Move to earlier position in loop structure.
                     offspring[p] = rand.(Poisson.(Float64.(expected))) # Calculate offspring produced
                     #println("Offspring = $offspring")
                     species_offspring = sum(offspring[p]) # For diagnostic purposes. Will be removed once testing is finished
@@ -1048,6 +1049,7 @@ function write_landscape_stats(landscape,directory,filename,replicate,timestep,s
         if timestep==-1 && replicate==1
             writedlm(IO,col_names)
         end
+        # Change to hcat
         writedlm(IO, [replicate timestep pop rich simp shan T_opt T_sd H_opt H_sd disp disp_g VT_opt VT_sd VH_opt VH_sd Vdisp Vdisp_g ft fh fit tdiff avgtdiff varft varfh varfit vartdiff varavgtdiff s_clim trend mean_trend grad H_t H_h α])
     end
 end
@@ -1072,6 +1074,7 @@ function write_landscape_csv(landscape,directory,filename,replicate,timestep,s_c
                         lin = parse(Int,(@sprintf("%.0f",landscape[i,j].species[k][l,10]*10^15)))
                         lineageID = string(lin, base=62)
                         temperature = landscape[i,j].temp_t + trend
+                        # Change to hcat
                         writedlm(IO, [k replicate timestep H_t H_h α s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID temperature trend mean_trend landscape[i,j].precip_t landscape[i,j].habitat])
                     end
                 end
@@ -1110,6 +1113,25 @@ function heatmaps(richness,temperatures,habitats,pops,trait_means,filename,direc
         println(trfilename)
         heatmap(trait_means[i])
         png(trfilename)
+    end
+end
+
+#------------------------------
+# File manipulations
+#------------------------------
+
+# Merges data output files from different replicates into a single file containing all replicates
+# Args: directory - location of files to be merged
+#       filename -
+function merge_output_files(directory,filename)
+    for i in 1:length(infiles2)
+        file = DataFrame(CSV.File(infiles2[i]))
+        file.Replicate .= i
+        if i==1
+            CSV.write(outfile,file,append=false)
+        else
+            CSV.write(outfile,file,append=true)
+        end
     end
 end
 
@@ -1164,14 +1186,15 @@ end
 
 # Run simulation using landscape and parameters from input files. Requires inputs for temperature, environment,
 # scen,grad... are loop indices for different scenarios (e.g. climate trend, gradient strength)
-function simulation_run2()
+function simulation_run()
     println("Starting.")
-    ArgDict = read_arguments()
+    ArgDict = read_arguments() # Read in shell input
     println(ArgDict)
     parasource = ArgDict["parasource"]
     println(parasource)
     println(typeof(parasource))
     par = include(parasource)
+    include("PatchStatistics.jl")
     scen = ArgDict["scenario"]
     bmax = par["bmax"]
     tmax = par["tmax"]
@@ -1181,6 +1204,8 @@ function simulation_run2()
     T_ref = par["T_ref"]
     immi = par["immi"]
     mut = par["mutate"]
+    mut_sd = par["mut_sd"]
+    mut_decay = par["mut_decay"]
     p_immi = par["p_immi"]
     e_immi = par["e_immi"]
     dir = par["dir"]
@@ -1208,7 +1233,7 @@ function simulation_run2()
                 #println("Starting reproduction routine.")
                 demographics(landscape,α,0,grad,300,burnin,immi,p_immi,e_immi)
                 if mut==true
-                    mutate(landscape,0.05,b)
+                    mutate(landscape,mut_sd,mut_decay,b)
                 end
                 write_landscape_stats(landscape,dir,filename,rep,b,scen,0,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
                 if mod(b,50)==true || b==bmax
@@ -1228,7 +1253,7 @@ function simulation_run2()
             #println("Starting reproduction routine.")
             demographics(landscape,α,trend[t],grad,300,burnin,immi,p_immi,e_immi)
             if mut==true
-                mutate(landscape,0.05,step)
+                mutate(landscape,mut_sd,mut_decay,step)
             end
             write_landscape_stats(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
             if mod(t,50)==0 && t>=9900 || t==tmax
@@ -1244,7 +1269,7 @@ function simulation_run2()
         #heatmaps(richness,temperatures,habitat,pops,trait_means,filename,dir)
         write_landscape_csv(landscape,dir,filename,rep,tmax,scen,trend[tmax],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
     end
-    #write_sp_list(species_list,dir)
+    patchstats(dir,filename)
     println("Program complete.")
 end
 
@@ -1254,4 +1279,4 @@ end
 # s_clim is the climate scenario, s_grad is the gradient scenario
 #simulation_run2(parasource,0)
 
-@time simulation_run2()
+@time simulation_run()

@@ -8,8 +8,10 @@ Dict{String,Any}(
 "initial_pop" => 10,
 "immi" => false,
 "mutate" => false,
+"mut_sd" => 0.05,
+"mut_decay" => 0,
 "p_immi" => 0.005,
 "e_immi" => 2.5,
-#"dir" => "/home/ubuntu/outputfiles/test1/",
+#"dir" => "/home/ubuntu/outputfiles/eqtest_mut_/",
 "dir" => "/home/joseph/Documents/PhD/LandklifModel/Landscapes/Model1/Experiment1/debug_testing18/",
 )
