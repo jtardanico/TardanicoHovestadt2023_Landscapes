@@ -1194,7 +1194,7 @@ function simulation_run()
     println(parasource)
     println(typeof(parasource))
     par = include(parasource)
-    include("PatchStatistics.jl")
+    #include("PatchStatistics.jl")
     scen = ArgDict["scenario"]
     bmax = par["bmax"]
     tmax = par["tmax"]
@@ -1267,7 +1267,7 @@ function simulation_run()
         #trait_analysis(landscape)
         #env_analysis(landscape,trend[tmax])
         #heatmaps(richness,temperatures,habitat,pops,trait_means,filename,dir)
-        write_landscape_csv(landscape,dir,filename,rep,tmax,scen,trend[tmax],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
+        #write_landscape_csv(landscape,dir,filename,rep,tmax,scen,trend[tmax],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
     end
     patchstats(dir,filename)
     println("Program complete.")
@@ -1279,4 +1279,7 @@ end
 # s_clim is the climate scenario, s_grad is the gradient scenario
 #simulation_run2(parasource,0)
 
-@time simulation_run()
+@time begin
+    include("PatchStatistics.jl")
+    simulation_run()
+end
