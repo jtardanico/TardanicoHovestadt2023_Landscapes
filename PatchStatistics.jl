@@ -80,11 +80,11 @@ function calculations(data)
     data.mean_fit = fitness.(data.T_opt,data.H_opt,data.T_sd,data.H_sd,data.mean_trend,data.habitat,data.alpha)
 
     tdiff = by(data, [:x,:y,:Replicate, :Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
-        DataFrame(t_ft=mean(data.tdiff))
+        DataFrame(tdiff=mean(data.tdiff))
     end
 
     mt_tdiff = by(data, [:x,:y,:Replicate, :Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
-        DataFrame(t_ft=mean(data.mt_tdiff))
+        DataFrame(mt_tdiff=mean(data.mt_tdiff))
     end
 
     # time_tfit
@@ -176,8 +176,8 @@ function calculations(data)
     out = innerjoin(out,t_ft, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
     out = innerjoin(out,m_ft, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
     out = innerjoin(out,t_fh, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
-    out.time_fit = out.t_ft*out.t_fh
-    out.mean_fit = out.m_ft*out.t_fh
+    out.time_fit = out.t_ft.*out.t_fh
+    out.mean_fit = out.m_ft.*out.t_fh
     #out = innerjoin(out,f, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
     out = innerjoin(out,topt, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
     out = innerjoin(out,tsd, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
