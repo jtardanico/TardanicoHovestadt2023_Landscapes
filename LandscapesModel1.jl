@@ -252,17 +252,17 @@ function init_pops(n_pop::Int)
 end
 
 # Initialized a population of individuals with randomized trait values
-function init_popgrad(n_pop::Int,mean,sd)
+function init_popgrad(n_pop::Int,parameters)
     #println("init_popgrad")
     n_traits = 10
     patchpop = Array{Array{Float32,2},1}(undef,1)
     population = Array{Float32,2}(undef,n_pop,n_traits)
     for i in 1:n_pop
         ID = i              # Trait 1: Species ID number
-        T_opt = rand(Normal(mean,sd)) #8+22 # Trait 2: Temperature optimum
-        T_sd = rand()*5    # Trait 3: Temperature tolerance
-        H_opt = rand(Normal(mean,sd))    # Trait 4: Habitat optimum
-        H_sd = rand()*5 # Trait 5: Habitat tolerance
+        T_opt = rand(Normal(par["topt_µ"],par["topt_σ"])) #8+22 # Trait 2: Temperature optimum
+        T_sd = rand(LogNormal(par["tsd_µ"],par["tsd_σ"]))    # Trait 3: Temperature tolerance
+        H_opt = rand(Normal(par["hopt_µ"],par["hopt_σ"]))    # Trait 4: Habitat optimum
+        H_sd = rand(LogNormal(par["hsd_µ"],par["hsd_σ"])) # Trait 5: Habitat tolerance
         Disp_l = rand()      # Trait 6: Dispersal probability
         Disp_g = rand()       # Trait 7: Global dispersal probability
         Fert_max = 15       # Trait 8: Maximum number of offspring
@@ -315,7 +315,7 @@ end
 
 # Initializes a landscape from file inputs.
 # 'gradient' defines landscape gradient steepness
-function init_world(worldtempsource::String,worldenvsource::String,gradient)
+function init_world(worldtempsource::String,worldenvsource::String,gradient,parameters::Dict)
     #println("init_world")
     temperatures, environments = read_world_source(worldtempsource,worldenvsource)
     temperatures = temperatures * gradient
@@ -329,7 +329,7 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient)
         for j in 1:ncols
             row = i
             col = j
-            patchpop = init_popgrad(100,0.5,0.5)
+            patchpop = init_popgrad(100,parameters)
             #if (i==1 ) && (j==1)
             #    patchpop = init_popgrad(100,0.5,0.5)
             #else
@@ -479,9 +479,9 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                                                          # q + sum(surviving) ensures they do not overwrite existing organisms.
                                 immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
                                 ID = i              # Trait 1: Species ID number
-                                T_opt = rand()*10 #8+22 # Trait 2: Temperature optimum
+                                T_opt = (rand()*grad*1.5)-((grad*1.5)/2)+trend #8+22 # Trait 2: Temperature optimum
                                 T_sd = rand(LogNormal(0,1))    # Trait 3: Temperature tolerance
-                                H_opt = rand()*grad      # Trait 4: Habitat optimum
+                                H_opt = (rand()*grad*1.5)-((grad*1.5)/2)      # Trait 4: Habitat optimum
                                 H_sd = rand(LogNormal(0,1)) # Trait 5: Habitat tolerance
                                 Disp_l = rand()      # Trait 6: Dispersal probability
                                 Disp_g = rand()       # Trait 7: Global dispersal probability
@@ -1217,7 +1217,7 @@ function simulation_run()
     for rep in 1:rmax
         println("Replicate $rep")
         println("Initializing world.")
-        init_world(tempsource,envsource,grad)
+        init_world(tempsource,envsource,grad,par)
         generate_climate_trend(tmax,0,1,scen)
         println(length(trend))
         init_spp2()
