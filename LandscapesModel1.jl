@@ -252,7 +252,7 @@ function init_pops(n_pop::Int)
 end
 
 # Initialized a population of individuals with randomized trait values
-function init_popgrad(n_pop::Int,parameters)
+function init_popgrad(n_pop::Int,par::Dict)
     #println("init_popgrad")
     n_traits = 10
     patchpop = Array{Array{Float32,2},1}(undef,1)
@@ -366,19 +366,18 @@ end
 
 # Makes random changes to the traits of each individual in the landscape. Standard deviation of the changes is provided by mutsd.
 function mutate(landscape::Array{TPatch,2},mut_sd,mut_decay,timestep)
+    #println("Mutating")
     mut_t = decay(mut_sd,mut_decay,timestep)
-    #println("mutation")
     for i in 1:length(landscape[1:end,1]) # loop over landscpae length
-        for j in length(landscape[1,1:end]) # loop over landscape width
+        for j in 1:length(landscape[1,1:end]) # loop over landscape width
             if length(landscape[i,j].species[1:end])>0
                 for p in 1:length(landscape[i,j].species[1:end]) # loop over species
                     if length(landscape[i,j].species[p][1:end,1])>0
                         for q in length(landscape[i,j].species[p][1:end,1]) # loop over individuals
-                            landscape[i,j].species[p][q,2] = landscape[i,j].species[p][q,2] + rand(Normal(0,mut_t))# Temperature optimum
-                            #println("topt = $(landscape[i,j].species[p][q,2])")
-                            landscape[i,j].species[p][q,3] = landscape[i,j].species[p][q,3] * (rand(LogitNormal(0,mut_t)))# Temperature tolerance
+                            landscape[i,j].species[p][q,2] = landscape[i,j].species[p][q,2] .+ rand(Normal(0,mut_t))# Temperature optimum
+                            landscape[i,j].species[p][q,3] = landscape[i,j].species[p][q,3] .* (rand(LogitNormal(0,mut_t)))# Temperature tolerance
                             #println("tsd = $(landscape[i,j].species[p][q,3])")
-                            landscape[i,j].species[p][q,4] = landscape[i,j].species[p][q,4] + rand(Normal(0,mut_t))# Habitat optimum
+                            landscape[i,j].species[p][q,4] = landscape[i,j].species[p][q,4] .+ rand(Normal(0,mut_t))# Habitat optimum
                             #println("hopt = $(landscape[i,j].species[p][q,4])")
                             landscape[i,j].species[p][q,5] = landscape[i,j].species[p][q,5] * (rand(LogitNormal(0,mut_t)))# Habitat tolerance
                             #println("hsd = $(landscape[i,j].species[p][q,5])")
@@ -391,7 +390,7 @@ function mutate(landscape::Array{TPatch,2},mut_sd,mut_decay,timestep)
                                  d = 1
                                  #println("d set to $d")
                              end
-                             landscape[i,j].species[p][q,7] = d
+                             landscape[i,j].species[p][q,7] = copy(d)
                              #println("displ = $(landscape[i,j].species[p][q,6])")
                              d = landscape[i,j].species[p][q,7] + rand(Normal(0,mut_t)) # Global dispersal
                              if d < 0
@@ -401,7 +400,7 @@ function mutate(landscape::Array{TPatch,2},mut_sd,mut_decay,timestep)
                                  d = 1
                                  #println("d set to $d")
                              end
-                             landscape[i,j].species[p][q,7] = d
+                             landscape[i,j].species[p][q,7] = copy(d)
                              #println("dispg = $(landscape[i,j].species[p][q,7])")
                         end # end individuals loop
                     end  # end individual pop length check
@@ -410,6 +409,7 @@ function mutate(landscape::Array{TPatch,2},mut_sd,mut_decay,timestep)
         end # end landscape width loop
     end # end landscape length loop
 end # end function
+
 
 # Calculates number of offspring for each individual. Offspring form the next generation of individuals.
 function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int,burnin, immi,p_immi,e_immi)
@@ -462,7 +462,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                         if burnin==false && immi==true # Check burn in and immi conditions
                             immigrants = rand(Poisson(e_immi))
                             lenx = sum(surviving) + immigrants # make e_immi a dictionary parameter
-                            newgen = Array{Float32,2}(undef,lenx,length(landscape[i,j].species[p][1,1:end])) # Creates an array of length sum(offspring) with data for species p
+                            newgen = Array{Float32,2}(undef,lenx,length(landscape[i,j].species[p][1,1:end])) # Creates an array of length sum(offspring) + new immigrants with data for species p & width of n traits
                             ind = 1 # Keeps count of individual offspring added to newgen array
                             for q in 1:length(surviving) # Goes down index of 'surviving'
                                 if surviving[q] > 0
@@ -489,7 +489,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                                 dispersed = false   # Trait 9: Whether or not individual has already dispersed
                                 lineage = rand(Float32) # Trait 10: Lineage identifier
                                 immigrant = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage]
-                                newgen[ind,1:end] = immigrant
+                                newgen[ind,1:end] = copy(immigrant)
                             end # End loop over immigrants
                         else
                             newgen = Array{Float32,2}(undef,sum(surviving),length(landscape[i,j].species[p][1,1:end]))
@@ -497,7 +497,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                             for q in 1:length(surviving) # Goes down index of 'surviving'
                                 if surviving[q] > 0
                                     for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
-                                        newgen[ind,1:end] = landscape[i,j].species[p][q,1:end]  #
+                                        newgen[ind,1:end] = copy(landscape[i,j].species[p][q,1:end])  #
                                         newgen[ind,9] = false
                                         #println("$(newgen[ind,9])")
                                         ind += 1
@@ -508,13 +508,13 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                         global landscape[i,j].species[p] = copy(newgen)
                     else
                         array = Array{Float32,2}(undef,0,length(landscape[i,j].species[p][1,1:end])) # If total offspring is 0, replaces landscape[i,j].species[p]
-                        global landscape[i,j].species[p] = array                               # with a 0 by 8 array.
+                        global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
                         #println("Set length of landscape[$i,$j].species[$p] to zero")
                     end # End if-else statement
                 else
                     #println("No individuals of species $p present")
                     array = Array{Float32,2}(undef,0,length(species_list[1,1:end]))
-                    global landscape[i,j].species[p] = array                               # with a 0 by 8 array.
+                    global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
                     #println("Set length of landscape[$i,$j].species[$p] to zero")
                 end # End if-else statement
             end # End second loop over species
@@ -1231,7 +1231,8 @@ function simulation_run()
                 #println("Starting dispersal routine.")
                 dispersal!(landscape)
                 #println("Starting reproduction routine.")
-                demographics(landscape,α,0,grad,300,burnin,immi,p_immi,e_immi)
+                k=10 # IN USE FOR TESTING, REMOVE ONCE FINISHED
+                demographics(landscape,α,0,grad,K,burnin,immi,p_immi,e_immi)
                 if mut==true
                     mutate(landscape,mut_sd,mut_decay,b)
                 end
