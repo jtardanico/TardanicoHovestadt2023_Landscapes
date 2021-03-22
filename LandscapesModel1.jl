@@ -365,7 +365,17 @@ function generate_world(dim_x::Int,dim_y::Int)
 end
 
 # Makes random changes to the traits of each individual in the landscape. Standard deviation of the changes is provided by mutsd.
-function mutate(landscape::Array{TPatch,2},mut_sd,mut_decay,timestep)
+function mutate(landscape::Array{TPatch,2},p_mut,mut_sd,mut_decay,timestep)
+    function capped_poisson(mean,limit)
+        p = rand(Poisson(mean))
+        if p > limit
+            #println("p > limit")
+            return limit
+        else
+            #println("p = $p")
+            return p
+        end    
+    end
     #println("Mutating")
     mut_t = decay(mut_sd,mut_decay,timestep)
     for i in 1:length(landscape[1:end,1]) # loop over landscpae length
@@ -373,34 +383,46 @@ function mutate(landscape::Array{TPatch,2},mut_sd,mut_decay,timestep)
             if length(landscape[i,j].species[1:end])>0
                 for p in 1:length(landscape[i,j].species[1:end]) # loop over species
                     if length(landscape[i,j].species[p][1:end,1])>0
-                        for q in length(landscape[i,j].species[p][1:end,1]) # loop over individuals
-                            landscape[i,j].species[p][q,2] = landscape[i,j].species[p][q,2] .+ rand(Normal(0,mut_t))# Temperature optimum
-                            landscape[i,j].species[p][q,3] = landscape[i,j].species[p][q,3] .* (rand(LogitNormal(0,mut_t)))# Temperature tolerance
-                            #println("tsd = $(landscape[i,j].species[p][q,3])")
-                            landscape[i,j].species[p][q,4] = landscape[i,j].species[p][q,4] .+ rand(Normal(0,mut_t))# Habitat optimum
-                            #println("hopt = $(landscape[i,j].species[p][q,4])")
-                            landscape[i,j].species[p][q,5] = landscape[i,j].species[p][q,5] * (rand(LogitNormal(0,mut_t)))# Habitat tolerance
-                            #println("hsd = $(landscape[i,j].species[p][q,5])")
-                             d = landscape[i,j].species[p][q,6] + rand(Normal(0,mut_t))# Dispersal chance
+                        len = length(landscape[i,j].species[p][1:end,1]) # Get length of individuals array
+                        #println("len = $len")
+                        #println(typeof(len))
+                        #println("n = $n")
+                        #println(typeof(n))
+                        indices = sample(collect(1:1:len;),capped_poisson((p_mut*len),len);replace=false) # Get random sample of array indices. Sample n is a random Poisson number capped at pop size
+                        #println(typeof(indices))
+                        #for q in length(landscape[i,j].species[p][1:end,1]) # loop over individuals
+                        for q in 1:length(indices) # Loop over indices
+                            #println("Mutating at index ",indices[q])
+                            #println("rand normal =", typeof(rand(Normal(0,mut_t))))
+                            #println("trait =",landscape[i,j].species[p][indices[q],2])
+                            landscape[i,j].species[p][indices[q],2] = landscape[i,j].species[p][indices[q],2] .+ rand(Normal(0,mut_t))# Temperature optimum
+                            landscape[i,j].species[p][indices[q],3] = landscape[i,j].species[p][indices[q],3] .* (rand(LogitNormal(0,mut_t)))# Temperature tolerance
+                            #println("tsd = $(landscape[i,j].species[p][indices[q],3])")
+                            landscape[i,j].species[p][indices[q],4] = landscape[i,j].species[p][indices[q],4] .+ rand(Normal(0,mut_t))# Habitat optimum
+                            #println("hopt = $(landscape[i,j].species[p][indices[q],4])")
+                            landscape[i,j].species[p][indices[q],5] = landscape[i,j].species[p][indices[q],5] .* (rand(LogitNormal(0,mut_t)))# Habitat tolerance
+                            #println("hsd = $(landscape[i,j].species[p][indices[q],5])")
+                             d = landscape[i,j].species[p][indices[q],6] .+ rand(Normal(0,mut_t))# Dispersal chance
+                             #println("d = ",typeof(d))
                              #println("d=$d")
-                             if d < 0
+                             if d .< 0
                                  d = 0
                                  #println("d set to $d")
-                             elseif d > 1
+                             elseif d .> 1
                                  d = 1
                                  #println("d set to $d")
                              end
-                             landscape[i,j].species[p][q,7] = copy(d)
-                             #println("displ = $(landscape[i,j].species[p][q,6])")
-                             d = landscape[i,j].species[p][q,7] + rand(Normal(0,mut_t)) # Global dispersal
-                             if d < 0
+                             landscape[i,j].species[p][indices[q],7] = copy(d)
+                             #println("displ = $(landscape[i,j].species[p][indices[q],6])")
+                             d = landscape[i,j].species[p][indices[q],7] .+ rand(Normal(0,mut_t)) # Global dispersal
+                             if d .< 0
                                  d = 0
                                  #println("d set to $d")
-                             elseif d > 1
+                             elseif d .> 1
                                  d = 1
                                  #println("d set to $d")
                              end
-                             landscape[i,j].species[p][q,7] = copy(d)
+                             landscape[i,j].species[p][indices[q],7] = copy(d)
                              #println("dispg = $(landscape[i,j].species[p][q,7])")
                         end # end individuals loop
                     end  # end individual pop length check
@@ -899,8 +921,8 @@ function landscape_div(landscape::Array{TPatch,2})
     if rich > 0
         div = DataFrame()
         div.lineages = lineages
-        div.tally = 1
-        div = by(div,[:lineages]) do div
+        div.tally = ones(length(div.lineages))
+        div = combine(groupby(div,[:lineages])) do div
             DataFrame(count=sum(div.tally))
         end
         simp = simpson(div.count)
@@ -1201,9 +1223,11 @@ function simulation_run()
     rmax = par["rmax"]
     grad = par["grad"]
     α = par["α"]
+    K = par["carry_capacity"]
     T_ref = par["T_ref"]
     immi = par["immi"]
     mut = par["mutate"]
+    p_mut = par["p_mut"]
     mut_sd = par["mut_sd"]
     mut_decay = par["mut_decay"]
     p_immi = par["p_immi"]
@@ -1231,10 +1255,9 @@ function simulation_run()
                 #println("Starting dispersal routine.")
                 dispersal!(landscape)
                 #println("Starting reproduction routine.")
-                k=10 # IN USE FOR TESTING, REMOVE ONCE FINISHED
                 demographics(landscape,α,0,grad,K,burnin,immi,p_immi,e_immi)
                 if mut==true
-                    mutate(landscape,mut_sd,mut_decay,b)
+                    mutate(landscape,p_mut,mut_sd,mut_decay,b)
                 end
                 write_landscape_stats(landscape,dir,filename,rep,b,scen,0,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
                 if mod(b,50)==true || b==bmax
@@ -1246,15 +1269,19 @@ function simulation_run()
         #write_landscape_csv(landscape,dir,filename,rep,0,scen,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
         println("Starting main simulation")
         for t in 1:tmax
-            step=t+bmax
+            if ArgDict["burninperiod"] == true
+                step=t+bmax
+            else
+                step=t
+            end        
             burnin = false
             #println("Beginning timestep $t.")
             #println("Starting dispersal routine.")
             dispersal!(landscape)
             #println("Starting reproduction routine.")
-            demographics(landscape,α,trend[t],grad,300,burnin,immi,p_immi,e_immi)
+            demographics(landscape,α,trend[t],grad,K,burnin,immi,p_immi,e_immi)
             if mut==true
-                mutate(landscape,mut_sd,mut_decay,step)
+                mutate(landscape,p_mut,mut_sd,mut_decay,step)
             end
             write_landscape_stats(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
             if mod(t,50)==0 && t>=9900 || t==tmax

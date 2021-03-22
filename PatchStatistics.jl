@@ -50,17 +50,17 @@ function calculations(data)
     data.H_h = replace!(data.H_h,"NaN" => "Uniform")
 
         # Patch population sizes
-    populations = by(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    populations = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
             DataFrame(pop=length(data.ID))
     end
 
     data = innerjoin(populations,data, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
 
-    populations = by(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    populations = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
             DataFrame(pop=mean(data.pop))
     end
 
-    rich = by(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    rich = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(richness=length(unique(data.LineageID)))
     end
 
@@ -79,26 +79,26 @@ function calculations(data)
 
     data.mean_fit = fitness.(data.T_opt,data.H_opt,data.T_sd,data.H_sd,data.mean_trend,data.habitat,data.alpha)
 
-    tdiff = by(data, [:x,:y,:Replicate, :Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    tdiff = combine(groupby(data, [:x,:y,:Replicate, :Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(tdiff=mean(data.tdiff))
     end
 
-    mt_tdiff = by(data, [:x,:y,:Replicate, :Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    mt_tdiff = combine(groupby(data, [:x,:y,:Replicate, :Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(mt_tdiff=mean(data.mt_tdiff))
     end
 
     # time_tfit
-    t_ft = by(data, [:x,:y,:Replicate, :Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    t_ft = combine(groupby(data, [:x,:y,:Replicate, :Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(t_ft=mean(data.time_tfit))
     end
 
     # mean_tfit
-    m_ft = by(data, [:x,:y,:Replicate, :Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    m_ft = combine(groupby(data, [:x,:y,:Replicate, :Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(m_ft=mean(data.mean_tfit))
     end
 
     # hfit
-    t_fh = by(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    t_fh = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(t_fh=mean(data.hfit))
     end
 
@@ -120,45 +120,45 @@ function calculations(data)
     #    DataFrame(f=mean(data.fit))
     #end
 
-    topt = by(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    topt = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(T_opt=mean(data.T_opt))
     end
 
-    tsd = by(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    tsd = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(T_sd=mean(data.T_sd))
     end
 
-    hopt = by(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    hopt = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(H_opt=mean(data.H_opt))
     end
 
-    hsd = by(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    hsd = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(H_sd=mean(data.H_sd))
     end
 
-    displ = by(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    displ = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(disp_l=mean(data.disp_l))
     end
 
-    dispg = by(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    dispg = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(disp_g=mean(data.disp_g))
     end
 
-    fert = by(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient]) do data
+    fert = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
             DataFrame(fert=mean(data.fert_max))
     end
 
     div = select(data,[:x,:y,:Replicate,:Timestep,:LineageID])
-    div.tally = 1
-    div = by(div,[:x,:y,:Replicate,:Timestep,:LineageID]) do div
+    div.tally = ones(length(div.x))
+    div = combine(groupby(div,[:x,:y,:Replicate,:Timestep,:LineageID])) do div
         DataFrame(count=sum(div.tally))
     end
 
-    shan = by(div,[:x,:y,:Replicate,:Timestep]) do div
+    shan = combine(groupby(div,[:x,:y,:Replicate,:Timestep])) do div
         DataFrame(shannon=shannon(div.count))
     end
 
-    simp = by(div,[:x,:y,:Replicate,:Timestep]) do div
+    simp = combine(groupby(div,[:x,:y,:Replicate,:Timestep])) do div
         DataFrame(simpson=simpson(div.count))
     end
 
@@ -186,11 +186,11 @@ function calculations(data)
     out = innerjoin(out,displ, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
     out = innerjoin(out,dispg, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
     out = innerjoin(out,fert, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
-    out.H_t = ht
-    out.H_h = hh
-    out.alpha = alpha
-    out.clim_scen = cs
-    out.gradient = grad
+    out.H_t .= ht
+    out.H_h .= hh
+    out.alpha .= alpha
+    out.clim_scen .= cs
+    out.gradient .= grad
     return out
 end
 
