@@ -54,7 +54,6 @@ function mutate(landscape::Array{TPatch,2},p_mut,mut_sd,mut_decay,timestep)
                                  #println("d set to $d")
                              end
                              landscape[i,j].species[p][indices[q],7] = copy(d)
-                             println("displ = $(landscape[i,j].species[p][indices[q],6])")
                              d = landscape[i,j].species[p][indices[q],7] .+ rand(Normal(0,mut_t)) # Global dispersal
                              if d .< 0
                                  d = 0
