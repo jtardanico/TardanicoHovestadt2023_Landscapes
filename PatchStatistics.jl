@@ -56,28 +56,35 @@ function calculations(data)
 
     data = innerjoin(populations,data, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
 
-    populations = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
-            DataFrame(pop=mean(data.pop))
-    end
-
     rich = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(richness=length(unique(data.LineageID)))
     end
 
-    data.tdiff = data.T_opt .- data.temp_t
-    data.mt_tdiff = data.T_opt .- data.mean_trend
+    temperature = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
+        DataFrame(temperature=unique(data.temp_t))
+    end
 
-    data.time_tfit = tfit.(data.T_opt,data.T_sd,data.temp_t,data.alpha)
+    habitat = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
+        DataFrame(habitat=unique(data.habitat))
+    end
 
-    data.mean_tfit = tfit.(data.T_opt,data.T_sd,data.mean_trend,data.alpha)
+    data.trend_t = data.temp_t .+ data.trend
+    data.mean_trend_t = data.temp_t .+ data.mean_trend
+
+    data.tdiff = data.T_opt .- data.trend_t
+    data.mt_tdiff = data.T_opt .- data.mean_trend_t
+
+    data.time_tfit = tfit.(data.T_opt,data.T_sd,data.trend_t,data.alpha)
+
+    data.mean_tfit = tfit.(data.T_opt,data.T_sd,data.mean_trend_t,data.alpha)
 
     data.hfit = hfit.(data.H_opt,data.H_sd,data.habitat,data.alpha)
 
-    data.time_fit = fitness.(data.T_opt,data.H_opt,data.T_sd,data.H_sd,data.temp_t,data.habitat,data.alpha)
+    data.time_fit = fitness.(data.T_opt,data.H_opt,data.T_sd,data.H_sd,data.trend_t,data.habitat,data.alpha)
 
-    data.trend_fit = fitness.(data.T_opt,data.H_opt,data.T_sd,data.H_sd,data.trend,data.habitat,data.alpha)
+    data.trend_fit = fitness.(data.T_opt,data.H_opt,data.T_sd,data.H_sd,data.trend_t,data.habitat,data.alpha)
 
-    data.mean_fit = fitness.(data.T_opt,data.H_opt,data.T_sd,data.H_sd,data.mean_trend,data.habitat,data.alpha)
+    data.mean_fit = fitness.(data.T_opt,data.H_opt,data.T_sd,data.H_sd,data.mean_trend_t,data.habitat,data.alpha)
 
     tdiff = combine(groupby(data, [:x,:y,:Replicate, :Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
         DataFrame(tdiff=mean(data.tdiff))
@@ -169,6 +176,8 @@ function calculations(data)
     grad = data[1,:].gradient
 
     out = innerjoin(populations,rich, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
+    out = innerjoin(out,temperature, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
+    out = innerjoin(out,habitat, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
     out = innerjoin(out,shan, on = [:x,:y,:Replicate,:Timestep])
     out = innerjoin(out,simp, on = [:x,:y,:Replicate,:Timestep])
     out = innerjoin(out,tdiff, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])

@@ -60,8 +60,8 @@ function simulation_run()
     parasource = ArgDict["parasource"]
     println(parasource)
     println(typeof(parasource))
-    par = include(parasource)
-    scen = ArgDict["scenario"]
+    par = include(parasource) # See parameter config file (ParaDict) for parameter overview
+    scen = par["scen"]
     bmax = par["bmax"]
     tmax = par["tmax"]
     rmax = par["rmax"]
@@ -89,31 +89,31 @@ function simulation_run()
         generate_climate_trend(tmax,0,1,scen)
         println(length(trend))
         init_spp2()
-        write_landscape_stats(landscape,dir,filename,rep,-1,scen,0,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
-        write_landscape_csv(landscape,dir,filename,rep,-1,scen,0,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
+        write_landscape_stats(landscape,dir,filename,rep,-1,scen,0,0,grad,par["autocor_temp"],par["autocor_env"],α,bmax)
+        write_landscape_csv(landscape,dir,filename,rep,-1,scen,0,0,grad,par["autocor_temp"],par["autocor_env"],α)
         println("Starting burn-in period.")
-        if ArgDict["burninperiod"] == true
+        if par["burnin"] == true
             for b in 1:bmax
                 burnin = true
                 #println("Beginning burn-in timestep $b.")
                 #println("Starting dispersal routine.")
                 dispersal!(landscape)
                 #println("Starting reproduction routine.")
-                demographics(landscape,α,0,grad,K,burnin,immi,p_immi,e_immi)
+                demographics(landscape,α,0,grad,K,par["burnin"],immi,p_immi,e_immi)
                 if mut==true
                     mutate(landscape,p_mut,mut_sd,mut_decay,b)
                 end
-                write_landscape_stats(landscape,dir,filename,rep,b,scen,0,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+                write_landscape_stats(landscape,dir,filename,rep,b,scen,0,0,grad,par["autocor_temp"],par["autocor_env"],α,bmax)
                 if mod(b,50)==true || b==bmax
-                    write_landscape_csv(landscape,dir,filename,rep,b,scen,0,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
+                    write_landscape_csv(landscape,dir,filename,rep,b,scen,0,0,grad,par["autocor_temp"],par["autocor_env"],α)
                 end
                 #println("End timestep $t.")
             end
         end
-        #write_landscape_csv(landscape,dir,filename,rep,0,scen,0,grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
+        #write_landscape_csv(landscape,dir,filename,rep,0,scen,0,grad,par["autocor_t"],par["autocor_e"],α)
         println("Starting main simulation")
         for t in 1:tmax
-            if ArgDict["burninperiod"] == true
+            if par["burnin"] == true
                 step=t+bmax
             else
                 step=t
@@ -123,13 +123,13 @@ function simulation_run()
             #println("Starting dispersal routine.")
             dispersal!(landscape)
             #println("Starting reproduction routine.")
-            demographics(landscape,α,trend[t],grad,K,burnin,immi,p_immi,e_immi)
+            demographics(landscape,α,trend[t],grad,K,par["burnin"],immi,p_immi,e_immi)
             if mut==true
                 mutate(landscape,p_mut,mut_sd,mut_decay,step)
             end
-            write_landscape_stats(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α,bmax)
+            write_landscape_stats(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,par["autocor_temp"],par["autocor_env"],α,bmax)
             if mod(t,50)==0 && t>=9900 || t==tmax
-                write_landscape_csv(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
+                write_landscape_csv(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,par["autocor_temp"],par["autocor_env"],α)
             end
             #println("End timestep $t.")
         end

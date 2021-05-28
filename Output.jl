@@ -3,45 +3,44 @@
 #-------------------------
 
 function set_filename(argumentsdict::Dict, par::Dict,clim,grad)
-    filename = string("S", clim)
+    filename = string("S", par["scen"])
     println(filename)
-    if grad == 1
-        filename = string(filename, "_G0.5")
-        println(filename)
-    elseif grad == 2
-        filename = string(filename, "_G1")
-        println(filename)
-    elseif grad == 3
-        filename = string(filename, "_G2")
-        println(filename)
-    end
+    filename = string(filename, "_G",par["grad"])
+
     if argumentsdict["burninperiod"] == true
         filename = string(filename,"_B", par["bmax"])
         println(filename)
     end
     filename = string(filename, "_T", par["tmax"])
     println(filename)
-    if argumentsdict["uniformt"] == true
+
+    if par["temp_type"] == "uniform"
         filename = string(filename,"_UT")
         println(filename)
-    else
-        if argumentsdict["autocorrelatedtemp"] == true
-            filename = string(filename,"_AT",argumentsdict["autocor_t"])
-            println(filename)
-        else
-            filename = string(filename,"_ClT",argumentsdict["autocor_t"])
-            println(filename)
-        end
-    end
-    if argumentsdict["uniformenv"] == true
-        filename = string(filename,"_UE")
+    elseif par["temp_type"] == "clustered"
+        filename = string(filename,"_ClT",par["autocor_temp"])
+        println(filename)
+    elseif par["temp_type"] == "autocorrelated"
+        filename = string(filename,"_AT",par["autocor_temp"])
         println(filename)
     else
-        if argumentsdict["autocorrelatedenv"] == true
-            filename = string(filename,"_Ae",argumentsdict["autocor_e"])
+        filename = string(filename,"_",par["temp_type"])
+    end
+
+    if par["env_type"] == "uniform"
+        filename = string(filename,"_UT")
+        println(filename)
+    elseif par["env_type"] == "clustered"
+        filename = string(filename,"_ClT",par["autocor_env"])
+        println(filename)
+    elseif par["env_type"] == "autocorrelated"
+        filename = string(filename,"_AT",par["autocor_env"])
+        println(filename)
+    else
+        if par["env_type"] != par["temp_type"]
+            filename = string(filename,"_",par["env_type"])
             println(filename)
         else
-            filename = string(filename,"_Cle",argumentsdict["autocor_e"])
             println(filename)
         end
     end
@@ -76,15 +75,6 @@ function popcount(landscape)
     #println("landscape population: $x")
     return x
 end
-
-#expected = expected_fert.(landscape[i,j].species[p][1:end,2],
-#           landscape[i,j].species[p][1:end,3],
-#           landscape[i,j].species[p][1:end,4],
-#           landscape[i,j].species[p][1:end,5],
-#           landscape[i,j].species[p][1:end,8],
-#           landscape[i,j].temp_t,
-#           landscape[i,j].habitat, niche_tradeoff,
-#           niche_tradeoff, trend)
 
 function fitnessmeans(landscape,trend,meantrend,α)
     obs = 0
@@ -388,6 +378,9 @@ end
 
 # Writes the full landscape data to a .csv file, including every individual in every patch.
 # Caution: Very large data file.
+
+# OPTIMIZATION: WRITE DATA TO ARRAY, THEN WRITE ARRAY TO FILE <---- DO THIS!!!
+
 function write_landscape_csv(landscape,directory,filename,replicate,timestep,s_clim,trend,mean_trend,grad,H_t,H_h,α)
     outputname = string(directory,filename,".txt")
     rows = length(landscape[1:end,1])
@@ -405,9 +398,8 @@ function write_landscape_csv(landscape,directory,filename,replicate,timestep,s_c
                         #println("lin ID = ",string(landscape[i,j].species[k][l,10]))
                         lin = parse(Int,(@sprintf("%.0f",landscape[i,j].species[k][l,10]*10^15)))
                         lineageID = string(lin, base=62)
-                        temperature = landscape[i,j].temp_t + trend
                         # Change to hcat
-                        writedlm(IO, [k replicate timestep H_t H_h α s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID temperature trend mean_trend landscape[i,j].precip_t landscape[i,j].habitat])
+                        writedlm(IO, [k replicate timestep H_t H_h α s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID landscape[i,j].temp_t trend mean_trend landscape[i,j].precip_t landscape[i,j].habitat])
                     end
                 end
             end
