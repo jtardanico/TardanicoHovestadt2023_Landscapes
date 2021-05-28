@@ -99,7 +99,7 @@ function simulation_run()
                 #println("Starting dispersal routine.")
                 dispersal!(landscape)
                 #println("Starting reproduction routine.")
-                demographics(landscape,α,0,grad,K,par["burnin"],immi,p_immi,e_immi)
+                demographics(landscape,α,0,grad,K,par["burnin"],immi,p_immi,e_immi,b)
                 if mut==true
                     mutate(landscape,p_mut,mut_sd,mut_decay,b)
                 end
@@ -123,7 +123,7 @@ function simulation_run()
             #println("Starting dispersal routine.")
             dispersal!(landscape)
             #println("Starting reproduction routine.")
-            demographics(landscape,α,trend[t],grad,K,par["burnin"],immi,p_immi,e_immi)
+            demographics(landscape,α,trend[t],grad,K,par["burnin"],immi,p_immi,e_immi,step)
             if mut==true
                 mutate(landscape,p_mut,mut_sd,mut_decay,step)
             end

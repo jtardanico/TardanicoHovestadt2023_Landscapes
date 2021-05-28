@@ -128,9 +128,9 @@ function init_pops(n_pop::Int)
 end
 
 # Initialized a population of individuals with randomized trait values
-function init_popgrad(n_pop::Int,par::Dict)
+function init_popgrad(n_pop::Int,par::Dict,x::Int,y::Int)
     #println("init_popgrad")
-    n_traits = 10
+    n_traits = 13
     patchpop = Array{Array{Float32,2},1}(undef,1)
     population = Array{Float32,2}(undef,n_pop,n_traits)
     for i in 1:n_pop
@@ -144,7 +144,10 @@ function init_popgrad(n_pop::Int,par::Dict)
         Fert_max = 15       # Trait 8: Maximum number of offspring
         dispersed = false   # Trait 9: Whether or not individual has already dispersed
         lineage = rand(Float32) # Trait 10: Lineage identifier
-        population[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage]
+        origin_patch_x = x
+        origin_patch_y = y
+        origin_time = -1
+        population[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x ,origin_patch_y, origin_time,]
     end
     patchpop[1] = population
     return patchpop
@@ -205,7 +208,7 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient,para
         for j in 1:ncols
             row = i
             col = j
-            patchpop = init_popgrad(100,parameters)
+            patchpop = init_popgrad(100,parameters,i,j)
             #if (i==1 ) && (j==1)
             #    patchpop = init_popgrad(100,0.5,0.5)
             #else

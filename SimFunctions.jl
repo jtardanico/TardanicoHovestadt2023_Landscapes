@@ -74,7 +74,7 @@ end # end function
 
 
 # Calculates number of offspring for each individual. Offspring form the next generation of individuals.
-function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int,burnin, immi,p_immi,e_immi)
+function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int,burnin, immi,p_immi,e_immi,timestep)
     #println("demographics")
     for i in 1:length(landscape[1:end,1]) # begin landscape length loop
         for j in 1:length(landscape[1,1:end]) # Begin landscape width loop
@@ -150,6 +150,9 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                                 Fert_max = 15       # Trait 8: Maximum number of offspring
                                 dispersed = false   # Trait 9: Whether or not individual has already dispersed
                                 lineage = rand(Float32) # Trait 10: Lineage identifier
+                                origin_patch_x = i
+                                origin_patch_y = j
+                                origin_time = timestep
                                 immigrant = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage]
                                 newgen[ind,1:end] = copy(immigrant)
                             end # End loop over immigrants

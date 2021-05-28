@@ -386,7 +386,7 @@ function write_landscape_csv(landscape,directory,filename,replicate,timestep,s_c
     rows = length(landscape[1:end,1])
     cols = length(landscape[1,1:end])
     n_species = length(landscape[1,1].species[1:end,1])
-    col_names = ["ID" "Replicate" "Timestep" "H_t" "H_h" "alpha" "clim_scen" "gradient" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "LineageID" "temp_t" "trend" "mean_trend" "precip_t" "habitat"]
+    col_names = ["ID" "Replicate" "Timestep" "H_t" "H_h" "alpha" "clim_scen" "gradient" "x" "y" "T_opt" "T_sd" "H_opt" "H_sd" "disp_l" "disp_g" "fert_max" "LineageID" "Origin_x" "Origin_y" "Origin_time" "temp_t" "trend" "mean_trend" "precip_t" "habitat"]
     open(outputname, "a") do IO
         if timestep==-1 && replicate==1
             writedlm(IO, col_names)
@@ -399,7 +399,7 @@ function write_landscape_csv(landscape,directory,filename,replicate,timestep,s_c
                         lin = parse(Int,(@sprintf("%.0f",landscape[i,j].species[k][l,10]*10^15)))
                         lineageID = string(lin, base=62)
                         # Change to hcat
-                        writedlm(IO, [k replicate timestep H_t H_h α s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID landscape[i,j].temp_t trend mean_trend landscape[i,j].precip_t landscape[i,j].habitat])
+                        writedlm(IO, [k replicate timestep H_t H_h α s_clim grad i j landscape[i,j].species[k][l,2] landscape[i,j].species[k][l,3] landscape[i,j].species[k][l,4] landscape[i,j].species[k][l,5] landscape[i,j].species[k][l,6] landscape[i,j].species[k][l,7] landscape[i,j].species[k][l,8] lineageID landscape[i,j].species[k][l,11] landscape[i,j].species[k][l,12] landscape[i,j].species[k][l,13] landscape[i,j].temp_t trend mean_trend landscape[i,j].precip_t landscape[i,j].habitat])
                     end
                 end
             end
