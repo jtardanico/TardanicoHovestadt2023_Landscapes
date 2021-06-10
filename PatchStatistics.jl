@@ -6,6 +6,7 @@
 using DataFrames
 using CSV
 using StatsBase
+using DelimitedFiles
 
 
 
@@ -37,19 +38,105 @@ function simpson(i)
     return λ
 end
 
-function calculations(data)
+# Creates a data frame of length x*y*timesteps*replicates containing simulation parameters and baseline patch attributes for all patches.
+function patch_attributes(tempsource,envsource,data)
+    temp_landscape = readdlm(tempsource,';')
+    env_landscape = readdlm(envsource,';')
+
+    times = unique(data.Timestep)
+    reps = unique(data.Replicate)
+    ht = unique(data.H_t)
+    hh = unique(data.H_h)
+    α = unique(data.alpha)
+    scen = unique(data.clim_scen)
+    grad = unique(data.gradient)
+
+    trends = Array{Float64,1}(undef,(length(times)*length(reps)))
+    counter = 1
+    for i in 1:length(reps)
+        for j in 1:length(times)
+             t = unique(data.trend[.&(data[!,:Replicate].==reps[i], data[!,:Timestep] .== times[j]),:])
+             println(t)
+             trends[counter] = t[1]
+            counter = counter + 1
+        end
+    end
+
+    n_patches = length(temp_landscape[1:end,1]) * length(temp_landscape[1,1:end]) * length(times)
+    v_x = Array{Int,1}(undef,n_patches)
+    v_y = Array{Int,1}(undef,n_patches)
+    v_time = Array{Int,1}(undef,n_patches)
+    v_reps = Array{Float64,1}(undef,n_patches)
+    v_ht = Array{Any,1}(undef,n_patches)
+    v_hh = Array{Any,1}(undef,n_patches)
+    v_α = Array{Float64,1}(undef,n_patches)
+    v_scen = Array{Float64,1}(undef,n_patches)
+    v_grad = Array{Float64,1}(undef,n_patches)
+    v_temp = Array{Float64,1}(undef,n_patches)
+    v_env = Array{Float64,1}(undef,n_patches)
+    v_trend = Array{Float64,1}(undef,n_patches)
+    counter = 1
+    t_counter = 1
+    for g in 1:length(reps)
+        for h in 1:length(times)
+
+            for i in 1:length(temp_landscape[1:end,1])
+                for j in 1:length(temp_landscape[1,1:end])
+                    v_x[counter] = i
+                    v_y[counter] = j
+                    v_time[counter] = times[h]
+                    v_reps[counter] = reps[g]
+                    v_temp[counter] = temp_landscape[i,j]
+                    v_env[counter] = env_landscape[i,j]
+                    v_trend[t_counter] = trends[t_counter]
+                    counter = counter + 1
+                end
+            end
+            t_counter = t_counter + 1
+        end
+    end
+
+    v_ht .= ht[1]
+    v_hh .= hh[1]
+    v_α .= α[1]
+    v_scen .= scen[1]
+    v_grad .= grad[1]
+
+    attributes = DataFrame(x = v_x,
+                           y = v_y,
+                           Timestep = v_time,
+                           Replicate = v_reps,
+                           H_t = v_ht,
+                           H_h = v_hh,
+                           alpha = v_α,
+                           clim_scen = v_scen,
+                           gradient = v_grad,
+                           temperature = v_temp,
+                           habitat = v_env,
+                           trend = v_trend)
+    return attributes
+end
+
+function calculations(data,tempsource,envsource)
 
     println(data)
     data = DataFrame(CSV.File(data))
 
+    atts = patch_attributes(tempsource,envsource,data)
 
     data.H_t = string.(data.H_t)
     data.H_h = string.(data.H_h)
 
+    atts.H_t = string.(atts.H_t)
+    atts.H_h = string.(atts.H_h)
+
     data.H_t = replace!(data.H_t,"NaN" => "Uniform")
     data.H_h = replace!(data.H_h,"NaN" => "Uniform")
 
-        # Patch population sizes
+    atts.H_t = replace!(atts.H_t,"NaN" => "Uniform")
+    atts.H_h = replace!(atts.H_h,"NaN" => "Uniform")
+
+    # Patch population sizes
     populations = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
             DataFrame(pop=length(data.ID))
     end
@@ -60,13 +147,13 @@ function calculations(data)
         DataFrame(richness=length(unique(data.LineageID)))
     end
 
-    temperature = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
-        DataFrame(temperature=unique(data.temp_t))
-    end
+    #temperature = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
+    #    DataFrame(temperature=unique(data.temp_t))
+    #end
 
-    habitat = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
-        DataFrame(habitat=unique(data.habitat))
-    end
+    #habitat = combine(groupby(data, [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])) do data
+    #    DataFrame(habitat=unique(data.habitat))
+    #end
 
     data.trend_t = data.temp_t .+ data.trend
     data.mean_trend_t = data.temp_t .+ data.mean_trend
@@ -176,8 +263,8 @@ function calculations(data)
     grad = data[1,:].gradient
 
     out = innerjoin(populations,rich, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
-    out = innerjoin(out,temperature, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
-    out = innerjoin(out,habitat, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
+    #out = innerjoin(out,temperature, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
+    #out = innerjoin(out,habitat, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
     out = innerjoin(out,shan, on = [:x,:y,:Replicate,:Timestep])
     out = innerjoin(out,simp, on = [:x,:y,:Replicate,:Timestep])
     out = innerjoin(out,tdiff, on = [:x,:y,:Replicate,:Timestep,:H_t,:H_h,:alpha,:clim_scen,:gradient])
@@ -200,10 +287,13 @@ function calculations(data)
     out.alpha .= alpha
     out.clim_scen .= cs
     out.gradient .= grad
+
+    out = outerjoin(out,atts, on = [:x,:y,:Timestep,:Replicate,:H_t,:H_h,:alpha,:clim_scen,:gradient]) # Outer join with 'atts' ensures that empty patches have data entries.
+
     return out
 end
 
-function patchstats(dir::String,filename::String)
+function patchstats(dir::String,filename::String,tempsource::String,envsource::String)
     println(dir)
     println(filename)
     outfile = string(dir,filename,"patches.txt")
@@ -220,7 +310,7 @@ function patchstats(dir::String,filename::String)
     println(infiles)
     println(length(infiles))
     for i in 1:length(infiles)
-        patchstats = calculations(infiles[i])
+        patchstats = calculations(infiles[i],tempsource,envsource)
         if i==1
             CSV.write(outfile,patchstats,append=false)
         else

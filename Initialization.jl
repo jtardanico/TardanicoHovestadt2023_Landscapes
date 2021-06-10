@@ -196,6 +196,7 @@ end
 # 'gradient' defines landscape gradient steepness
 function init_world(worldtempsource::String,worldenvsource::String,gradient,parameters::Dict)
     #println("init_world")
+    init_pop = parameters["initial_pop"]
     temperatures, environments = read_world_source(worldtempsource,worldenvsource)
     temperatures = temperatures * gradient
     environments = environments * gradient
@@ -208,7 +209,7 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient,para
         for j in 1:ncols
             row = i
             col = j
-            patchpop = init_popgrad(100,parameters,i,j)
+            patchpop = init_popgrad(init_pop,parameters,i,j)
             #if (i==1 ) && (j==1)
             #    patchpop = init_popgrad(100,0.5,0.5)
             #else

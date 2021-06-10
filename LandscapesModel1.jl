@@ -141,7 +141,7 @@ function simulation_run()
         #heatmaps(richness,temperatures,habitat,pops,trait_means,filename,dir)
         #write_landscape_csv(landscape,dir,filename,rep,tmax,scen,trend[tmax],grad,ArgDict["autocor_t"],ArgDict["autocor_e"],α)
     end
-    patchstats(dir,filename)
+    patchstats(dir,filename,tempsource,envsource)
     println("Program complete.")
 end
 
