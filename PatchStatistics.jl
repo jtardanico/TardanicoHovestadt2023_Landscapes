@@ -88,7 +88,7 @@ function patch_attributes(tempsource,envsource,data)
                     v_reps[counter] = reps[g]
                     v_temp[counter] = temp_landscape[i,j]
                     v_env[counter] = env_landscape[i,j]
-                    v_trend[t_counter] = trends[t_counter]
+                    v_trend[counter] = trends[t_counter]
                     counter = counter + 1
                 end
             end
@@ -294,21 +294,33 @@ function calculations(data,tempsource,envsource)
 end
 
 function patchstats(dir::String,filename::String,tempsource::String,envsource::String)
-    println(dir)
-    println(filename)
+    println("Calculating patch stats...")
     outfile = string(dir,filename,"patches.txt")
-    println(outfile)
+    println("Output file: $outfile")
     infiles = string.(dir,readdir(dir))
-    println(infiles)
-    println(length(infiles))
+    n_files = length(infiles)
+    println("No. files in directory = $n_files")
+    println("Files in directory:")
+    for i in 1:length(infiles)
+        println(infiles[i])
+    end
     println("")
     filter!(x -> occursin(filename,x)==true, infiles)
-    println(infiles)
-    println(length(infiles))
+    n_files = length(infiles)
+    println("No. files = $n_files") # <----------------
+    println("Files containing $filename:")
+    for i in 1:length(infiles)
+        println(infiles[i])
+    end
     println("")
     filter!(x -> occursin("trend",x)==false, infiles)
-    println(infiles)
-    println(length(infiles))
+    n_files = length(infiles)
+    println("No. files = $n_files")
+    println("Files containing $filename -'trend': ")
+    for i in 1:length(infiles)
+        println(infiles[i])
+    end
+    println("")
     for i in 1:length(infiles)
         patchstats = calculations(infiles[i],tempsource,envsource)
         if i==1

@@ -13,7 +13,7 @@
 #Pkg.add("StatsBase")
 #Pkg.add("Distributions")
 #Pkg.add("ArgParse")
-
+println("Loading packages")
 using Distributions
 using ArgParse
 using DelimitedFiles
@@ -37,7 +37,7 @@ using Printf
 # Patches are objects with positional indices (x,y), temperature, precipitation, and species populations.
 # Species populations are structured as nested arrays. The x index defines the species, the y index the individual,
 # and the z index the trait value for different species traits
-
+println("Defining structs")
 struct TPatch
     row::Int # Row and column indices define patch location
     col::Int
@@ -50,7 +50,7 @@ end
 #----------------------------------------------
 # Main Program
 #----------------------------------------------
-
+println("compiling main sim function")
 # Run simulation using landscape and parameters from input files. Requires inputs for temperature, environment,
 # scen,grad... are loop indices for different scenarios (e.g. climate trend, gradient strength)
 function simulation_run()
@@ -61,6 +61,9 @@ function simulation_run()
     println(parasource)
     println(typeof(parasource))
     par = include(parasource) # See parameter config file (ParaDict) for parameter overview
+    if haskey(par,"seed")==true# Checks of parasource includes a key for the RNG seed
+        Random.seed!(par["seed"])
+    end
     scen = par["scen"]
     bmax = par["bmax"]
     tmax = par["tmax"]
@@ -89,17 +92,22 @@ function simulation_run()
         generate_climate_trend(tmax,0,1,scen)
         println(length(trend))
         init_spp2()
+        println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
         write_landscape_stats(landscape,dir,filename,rep,-1,scen,0,0,grad,par["autocor_temp"],par["autocor_env"],α,bmax)
         write_landscape_csv(landscape,dir,filename,rep,-1,scen,0,0,grad,par["autocor_temp"],par["autocor_env"],α)
-        println("Starting burn-in period.")
         if par["burnin"] == true
+            println("Starting burn-in period.")
             for b in 1:bmax
+                println("burn-in time step: $b")
                 burnin = true
                 #println("Beginning burn-in timestep $b.")
-                #println("Starting dispersal routine.")
+                println("Starting dispersal routine.")
+                println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
                 dispersal!(landscape)
-                #println("Starting reproduction routine.")
+                println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
+                println("Starting reproduction routine.")
                 demographics(landscape,α,0,grad,K,par["burnin"],immi,p_immi,e_immi,b)
+                println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
                 if mut==true
                     mutate(landscape,p_mut,mut_sd,mut_decay,b)
                 end
@@ -119,10 +127,12 @@ function simulation_run()
                 step=t
             end
             burnin = false
-            #println("Beginning timestep $t.")
-            #println("Starting dispersal routine.")
+            println("Beginning timestep $t.")
+            println("Starting dispersal routine.")
+            println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
             dispersal!(landscape)
-            #println("Starting reproduction routine.")
+            println("Starting reproduction routine.")
+            println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
             demographics(landscape,α,trend[t],grad,K,par["burnin"],immi,p_immi,e_immi,step)
             if mut==true
                 mutate(landscape,p_mut,mut_sd,mut_decay,step)
@@ -153,10 +163,19 @@ end
 
 @time begin
     # Load functions
+    println("Loading Initialization.jl")
     include("Initialization.jl")
+
+    println("Loading SimFunctions.jl")
     include("SimFunctions.jl")
+
+    println("Loading Calculations.jl")
     include("Calculations.jl")
+
+    println("Loading Output.jl")
     include("Output.jl")
+
+    println("Loading PatchStatistics.jl")
     include("PatchStatistics.jl")
     #include("Misc.jl")
     simulation_run()

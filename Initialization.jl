@@ -198,10 +198,14 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient,para
     #println("init_world")
     init_pop = parameters["initial_pop"]
     temperatures, environments = read_world_source(worldtempsource,worldenvsource)
+    typeof(temperatures) # For debugging diagnostics
+    typeof(environments)
     temperatures = temperatures * gradient
     environments = environments * gradient
     nrows = length(temperatures[1:end,1])
+    println("nrows = $nrows")
     ncols = length(temperatures[1,1:end])
+    println("ncols = $ncols")
     m_t, v_t = mean_and_var(temperatures)
     m_e, v_e = mean_and_var(environments)
     global landscape = Array{TPatch, 2}(undef, nrows, ncols)
@@ -209,17 +213,22 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient,para
         for j in 1:ncols
             row = i
             col = j
-            patchpop = init_popgrad(init_pop,parameters,i,j)
-            #if (i==1 ) && (j==1)
-            #    patchpop = init_popgrad(100,0.5,0.5)
-            #else
-            #    patchpop = Array{Array{Float32,2},1}(undef,1)
-            #    patchpop[1] = Array{Float32,2}(undef,0,10)
-            #end
+            #patchpop = init_popgrad(init_pop,parameters,i,j)
+            if (i==1 ) && (j==1) # Use this to initialize a population in only one patch
+                patchpop = init_popgrad(init_pop,parameters,i,j)
+                println(typeof(patchpop))
+                len = length(patchpop[1][1:end,1])
+                wid = length(patchpop[1][1,1:end])
+                println("Initial patchpop dims: $len, $wid")
+            else
+                patchpop = Array{Array{Float32,2},1}(undef,1)
+                patchpop[1] = Array{Float32,2}(undef,0,10)
+            end
             temp = temperatures[i,j]
             habitat = environments[i,j]
             precip = 0
             patch = TPatch(row,col,patchpop,temp,precip,habitat)
+            println("patch: $i, $j, ", length(patch.species[1][1:end,1]))
             landscape[i,j] = patch
         end
     end
