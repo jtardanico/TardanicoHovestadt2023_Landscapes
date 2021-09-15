@@ -100,7 +100,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                     species_offspring = sum(offspring[p]) # For diagnostic purposes. Will be removed once testing is finished
                     #println("Total offspring of species $p = $species_offspring")
                     total_offspring = total_offspring + species_offspring
-                    println("total offspring = $total_offspring")
+                    #println("total offspring = $total_offspring")
                 end
             end # End loop over species
             for p in 1:length(landscape[i,j].species[1:end]) # Begin second loop over species
@@ -120,7 +120,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                     else
                         surviving = 0
                     end
-                    println("Species $p has $surviving surviving offspring.")
+                    #println("Species $p has $surviving surviving offspring.")
                     if sum(surviving) > 0 # Check number of survivors
                         if burnin==false && immi==true # Check burn in and immi conditions
                             immigrants = rand(Poisson(e_immi))
@@ -133,7 +133,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                                     for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
                                         newgen[ind,1:end] = landscape[i,j].species[p][q,1:end]  #
                                         newgen[ind,9] = false
-                                        println("$(newgen[ind,9])")
+                                        #println("$(newgen[ind,9])")
                                         ind += 1
                                     end # End loop over survivng offspring
                                 end # End if statement
@@ -166,7 +166,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                                     for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
                                         newgen[ind,1:end] = copy(landscape[i,j].species[p][q,1:end])  #
                                         newgen[ind,9] = false
-                                        println("$(newgen[ind,9])")
+                                        #println("$(newgen[ind,9])")
                                         ind += 1
                                     end # End loop over surviving offspring
                                 end # End if statement
@@ -176,13 +176,13 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                     else
                         array = Array{Float32,2}(undef,0,length(landscape[i,j].species[p][1,1:end])) # If total offspring is 0, replaces landscape[i,j].species[p]
                         global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
-                        println("Set length of landscape[$i,$j].species[$p] to zero")
+                        #println("Set length of landscape[$i,$j].species[$p] to zero")
                     end # End if-else statement
                 else
-                    println("No individuals of species $p present")
+                    #println("No individuals of species $p present")
                     array = Array{Float32,2}(undef,0,length(species_list[1,1:end]))
                     global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
-                    println("Set length of landscape[$i,$j].species[$p] to zero")
+                    #println("Set length of landscape[$i,$j].species[$p] to zero")
                 end # End if-else statement
             end # End second loop over species
         end # End landscape width loop
@@ -266,25 +266,25 @@ function disperse_local(trow_l::Int, tcol_l::Int, outofbounds_l::Bool, i::Int, j
 end
 
 function disperse_global(trow_g::Int,tcol_g::Int,outofbounds_g::Bool,i::Int,j::Int,k::Int,l::Int)
-    println("Initiating global dispersal")
-    println("outofbounds = $outofbounds_g")
+    #println("Initiating global dispersal")
+    #println("outofbounds = $outofbounds_g")
     if outofbounds_g == false
         len = length(landscape[i,j].species[k][1:end,1])
         wid = length(landscape[i,j].species[k][1,1:end])
-        println("Patch $i,$j, dims = $len,$wid")
-        println("Target patch: $trow_g, $tcol_g")
+        #println("Patch $i,$j, dims = $len,$wid")
+        #println("Target patch: $trow_g, $tcol_g")
         global landscape[i,j].species[k][l,9] = true
         migrant = reshape(landscape[i,j].species[k][l,1:end],1,length(landscape[i,j].species[k][l,1:end])) # Reshapes vector from a 3 by 1 array to a 1 by 3 array. Needed for vcat to work.
-        len = length(migrant[1:end,1])
-        wid = length(migrant[1,1:end])
-        println("migrant array, dims = $len,$wid")
+        #len = length(migrant[1:end,1])
+        #wid = length(migrant[1,1:end])
+        #println("migrant array, dims = $len,$wid")
         global landscape[trow_g,tcol_g].species[k] = vcat(landscape[trow_g,tcol_g].species[k],migrant) # Adds the individual to the target patch.
-        println("Added individual of species $k to patch $trow_g, $tcol_g")
+        #println("Added individual of species $k to patch $trow_g, $tcol_g")
         global landscape[i,j].species[k] = landscape[i,j].species[k][setdiff(1:end,l),:] # Removes the individual from the natal patch
-        println("Removed individual of species $k from patch $i, $j")
+        #println("Removed individual of species $k from patch $i, $j")
     else
         global landscape[i,j].species[k] = landscape[i,j].species[k][setdiff(1:end,l),:]
-        println("Removed individual of species $k from patch $i, $j")
+        #println("Removed individual of species $k from patch $i, $j")
     end
 end
 
@@ -303,7 +303,7 @@ function dispersal!(landscape::Array{TPatch,2})
                     #sp_pop = length(landscape[i,j].species[k][1:end,1])
                     #println("Species $k pop. = $sp_pop")
                     popsize = length(landscape[i,j].species[k][1:end,1])
-                    println("pop = $popsize")
+                    #println("pop = $popsize")
                     if length(landscape[i,j].species[k][1:end,1])>0 # Check population size
                         #println("pop size check")
                         l = 0

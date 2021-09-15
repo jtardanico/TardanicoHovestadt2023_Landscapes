@@ -74,7 +74,7 @@ end
 # Creates an array with dimentions n_species and n_traits which acts as a master list of all species in the simulation
 function init_spp(n_species::Int)
     #println("Initializing species master list...")
-    n_traits = 9
+    n_traits = 13
     global species_list = Array{Any,2}(undef,n_species,n_traits)
     for i in 1:n_species
         ID = i              # Trait 1: Species ID number
@@ -86,14 +86,17 @@ function init_spp(n_species::Int)
         Disp_g = 0.01       # Trait 7: Global dispersal probability
         Fert_max = 10       # Trait 8: Maximum number of offspring
         dispersed = false   # Trait 9: Whether or not individual has already dispersed
-        global species_list[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed]
+        origin_patch_x = "x"
+        origin_patch_y = "y"
+        origin_time = "timestep"
+        global species_list[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, origin_patch_x, origin_patch_y, origin_time]
     end
 end
 
 # Creates a 1x9 array listing species traits. For use with function "simulation_run2"
 function init_spp2()
     #println("Initializing species master list...")
-    n_traits = 10
+    n_traits = 13
     global species_list = Array{Any,2}(undef,1,n_traits)
         ID = 1              # Trait 1: Species ID number
         T_opt = "10-30" #8+22 # Trait 2: Temperature optimum
@@ -105,7 +108,10 @@ function init_spp2()
         Fert_max = "5-30"       # Trait 8: Maximum number of offspring
         dispersed = "N/A"   # Trait 9: Whether or not individual has already dispersed
         lineage = "N/A"    # Trait 10: Lineage identifier
-        global species_list[1,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage]
+        origin_patch_x = "x"
+        origin_patch_y = "y"
+        origin_time = "timestep"
+        global species_list[1,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x, origin_patch_y, origin_time]
 end
 
 # Initialization of species populations
