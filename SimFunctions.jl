@@ -75,16 +75,18 @@ end # end function
 
 # Calculates number of offspring for each individual. Offspring form the next generation of individuals.
 function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int,burnin, immi,p_immi,e_immi,timestep)
-    #println("demographics")
+    println("demographics")
     for i in 1:length(landscape[1:end,1]) # begin landscape length loop
         for j in 1:length(landscape[1,1:end]) # Begin landscape width loop
+            println("patch $i, $j")
             offspring = Array{Array{Int,1},1}(undef,length(landscape[i,j].species[1:end])) # List of offspring for all species
             total_offspring = 0 # Tally of all offpring of all species
             for p in 1:length(landscape[i,j].species[1:end]) # Loop over species
+                println("1")
                 sp_pop = length(landscape[i,j].species[p][1:end,1])
                 #println("Species $p pop. = $sp_pop")
                 if length(landscape[i,j].species[p][1:end,1])>0 # Check species population size
-                    #println("YEET!")
+                    println("1a")
                     expected = expected_fert.(landscape[i,j].species[p][1:end,2],
                                landscape[i,j].species[p][1:end,3],
                                landscape[i,j].species[p][1:end,4],
@@ -104,7 +106,9 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                 end
             end # End loop over species
             for p in 1:length(landscape[i,j].species[1:end]) # Begin second loop over species
+                println("2")
                 if length(landscape[i,j].species[p][1:end,1])>0 # Check species population size
+                    println("2a")
                     #=S_T, S_H = stress(landscape[i,j].species[p][1,2], # Calculating environmental stress for a species in a patch
                                landscape[i,j].species[p][1,3],
                                landscape[i,j].species[p][1,4],
@@ -116,21 +120,31 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                     #println("K = $K")
                     p_surv = expected_mort.(landscape[i,j].species[p][1:end,8],total_offspring,K) # Calculate expected mortality of oppspring
                     if K > 0 # Note: May be unecessary in future model iterations. Consider removal.
+                        println("2a1")
                         surviving = rand.(Binomial.(offspring[p], Float64.(p_surv))) # Calculate surviving offspring
                     else
+                        println("2a2")
                         surviving = 0
                     end
                     #println("Species $p has $surviving surviving offspring.")
                     if sum(surviving) > 0 # Check number of survivors
+                        println("2a3")
+                        #println("Larger than zero")
                         if burnin==false && immi==true # Check burn in and immi conditions
+                            println("2a3a")
                             immigrants = rand(Poisson(e_immi))
+                            #println("immigrants: $immigrants")
                             lenx = sum(surviving) + immigrants # make e_immi a dictionary parameter
                             newgen = Array{Float32,2}(undef,lenx,length(landscape[i,j].species[p][1,1:end])) # Creates an array of length sum(offspring) + new immigrants with data for species p & width of n traits
-                            println("length newgen = ",length(newgen[1:end,1]))
+                            #println("length newgen = ",length(newgen[1:end,1]))
                             ind = 1 # Keeps count of individual offspring added to newgen array
                             for q in 1:length(surviving) # Goes down index of 'surviving'
+                                println("2a3a1")
                                 if surviving[q] > 0
+                                    println("2a3a1a")
+                                    #println("surviving > 0")
                                     for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
+                                        println("2a3a1a1")
                                         newgen[ind,1:end] = landscape[i,j].species[p][q,1:end]  #
                                         newgen[ind,9] = false
                                         #println("$(newgen[ind,9])")
@@ -138,7 +152,9 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                                     end # End loop over survivng offspring
                                 end # End if statement
                             end # End loop over index of 'survivng'
+
                             for q in 1:immigrants # Begin loop over immigrants
+                                println("2a3a2")
                                 ind = q + sum(surviving) # Determines where in the array immigrants get put.
                                                          # q + sum(surviving) ensures they do not overwrite existing organisms.
                                 immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
@@ -159,26 +175,34 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                                 newgen[ind,1:end] = copy(immigrant)
                             end # End loop over immigrants
                         else
+                            println("2a3b")
+                            #println("No survivors")
                             newgen = Array{Float32,2}(undef,sum(surviving),length(landscape[i,j].species[p][1,1:end]))
                             ind = 1 # Keeps count of individual offspring added to newgen array
                             for q in 1:length(surviving) # Goes down index of 'surviving'
+                                println("2a3b1")
                                 if surviving[q] > 0
+                                    println("2a3b1a")
                                     for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
+                                        println("2a3b1a1")
                                         newgen[ind,1:end] = copy(landscape[i,j].species[p][q,1:end])  #
                                         newgen[ind,9] = false
-                                        #println("$(newgen[ind,9])")
+                                        println("$(newgen[ind,9])")
                                         ind += 1
                                     end # End loop over surviving offspring
                                 end # End if statement
                             end # End loop over index of 'survivng'
                         end # End if-else statement
+                        println("2a4")
                         global landscape[i,j].species[p] = copy(newgen)
                     else
+                        println("2a5")
                         array = Array{Float32,2}(undef,0,length(landscape[i,j].species[p][1,1:end])) # If total offspring is 0, replaces landscape[i,j].species[p]
                         global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
-                        #println("Set length of landscape[$i,$j].species[$p] to zero")
+                        println("Set length of landscape[$i,$j].species[$p] to zero")
                     end # End if-else statement
                 else
+                    println("2b")
                     #println("No individuals of species $p present")
                     array = Array{Float32,2}(undef,0,length(species_list[1,1:end]))
                     global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
@@ -187,6 +211,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
             end # End second loop over species
         end # End landscape width loop
     end # End landscape length loop
+    println("End of function")
 end # End function
 
 #----------------------------------------
@@ -319,7 +344,7 @@ function dispersal!(landscape::Array{TPatch,2})
                                 #println("disp = $(landscape[i,j].species[k][l,6]), roll = $d_local")
                                 #println("roll <= disp = $(d_local<=landscape[i,j].species[k][l,6])")
                                 if d_local<=landscape[i,j].species[k][l,6] # Check vs. dispersal probability (trait 6)
-                                    println("Individual disperses, checking mode")
+                                    #println("Individual disperses, checking mode")
                                     d_global = rand()
                                     #println("Roll = $d_global")
                                     #println("Roll <= disp_g = $(d_global <= landscape[i,j].species[k][l,7])")

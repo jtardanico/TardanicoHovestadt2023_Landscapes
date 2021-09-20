@@ -219,22 +219,23 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient,para
         for j in 1:ncols
             row = i
             col = j
-            #patchpop = init_popgrad(init_pop,parameters,i,j)
-            if (i==1 ) && (j==1) # Use this to initialize a population in only one patch
-                patchpop = init_popgrad(init_pop,parameters,i,j)
-                println(typeof(patchpop))
+            patchpop = init_popgrad(init_pop,parameters,i,j)
+
+            #if (i==1 ) && (j==1) # Use this to initialize a population in only one patch
+            #    patchpop = init_popgrad(init_pop,parameters,i,j)
+            #    println(typeof(patchpop))
                 len = length(patchpop[1][1:end,1])
                 wid = length(patchpop[1][1,1:end])
                 println("Initial patchpop dims: $len, $wid")
-            else
-                patchpop = Array{Array{Float32,2},1}(undef,1)
-                patchpop[1] = Array{Float32,2}(undef,0,10)
-            end
+            #else
+            #    patchpop = Array{Array{Float32,2},1}(undef,1)
+            #    patchpop[1] = Array{Float32,2}(undef,0,10)
+            #end
             temp = temperatures[i,j]
             habitat = environments[i,j]
             precip = 0
             patch = TPatch(row,col,patchpop,temp,precip,habitat)
-            println("patch: $i, $j, ", length(patch.species[1][1:end,1]))
+            #println("patch: $i, $j, ", length(patch.species[1][1:end,1]))
             landscape[i,j] = patch
         end
     end

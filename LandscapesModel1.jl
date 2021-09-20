@@ -106,7 +106,7 @@ function simulation_run()
                 dispersal!(landscape)
                 println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
                 println("Starting reproduction routine.")
-                demographics(landscape,α,0,grad,K,par["burnin"],immi,p_immi,e_immi,b)
+                demographics(landscape,α,0,grad,K,burnin,immi,p_immi,e_immi,b)
                 println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
                 if mut==true
                     mutate(landscape,p_mut,mut_sd,mut_decay,b)
@@ -133,7 +133,7 @@ function simulation_run()
             dispersal!(landscape)
             println("Starting reproduction routine.")
             println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
-            demographics(landscape,α,trend[t],grad,K,par["burnin"],immi,p_immi,e_immi,step)
+            demographics(landscape,α,trend[t],grad,K,burnin,immi,p_immi,e_immi,step)
             if mut==true
                 mutate(landscape,p_mut,mut_sd,mut_decay,step)
             end
