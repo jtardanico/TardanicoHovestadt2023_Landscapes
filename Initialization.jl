@@ -153,7 +153,7 @@ function init_popgrad(n_pop::Int,par::Dict,x::Int,y::Int)
         origin_patch_x = x
         origin_patch_y = y
         origin_time = -1
-        population[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x ,origin_patch_y, origin_time,]
+        population[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x ,origin_patch_y, origin_time]
     end
     patchpop[1] = population
     return patchpop

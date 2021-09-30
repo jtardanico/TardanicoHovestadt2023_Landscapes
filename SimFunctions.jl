@@ -73,8 +73,292 @@ function mutate(landscape::Array{TPatch,2},p_mut,mut_sd,mut_decay,timestep)
 end # end function
 
 
+# Calculates number of offspring for each individual. Offspring form the next generation of individuals. No immigration.
+function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int,timestep)
+    println("demographics")
+    for i in 1:length(landscape[1:end,1]) # begin landscape length loop
+        for j in 1:length(landscape[1,1:end]) # Begin landscape width loop
+            println("patch $i, $j")
+            offspring = Array{Array{Int,1},1}(undef,length(landscape[i,j].species[1:end])) # List of offspring for all species
+            total_offspring = 0 # Tally of all offpring of all species
+            for p in 1:length(landscape[i,j].species[1:end]) # Loop over species
+                println("1")
+                sp_pop = length(landscape[i,j].species[p][1:end,1])
+                #println("Species $p pop. = $sp_pop")
+                if length(landscape[i,j].species[p][1:end,1])>0 # Check species population size
+                    println("1a")
+                    expected = expected_fert.(landscape[i,j].species[p][1:end,2],
+                               landscape[i,j].species[p][1:end,3],
+                               landscape[i,j].species[p][1:end,4],
+                               landscape[i,j].species[p][1:end,5],
+                               landscape[i,j].species[p][1:end,8],
+                               landscape[i,j].temp_t,
+                               landscape[i,j].habitat, niche_tradeoff,
+                               niche_tradeoff, trend) # Calculate expected offpring, see init_spp for trait key
+                    #println("expected offspring = $expected")
+                    global x = expected # Move to earlier position in loop structure.
+                    offspring[p] = rand.(Poisson.(Float64.(expected))) # Calculate offspring produced
+                    #println("Offspring = $offspring")
+                    species_offspring = sum(offspring[p]) # For diagnostic purposes. Will be removed once testing is finished
+                    #println("Total offspring of species $p = $species_offspring")
+                    total_offspring = total_offspring + species_offspring
+                    #println("total offspring = $total_offspring")
+                end
+            end # End loop over species
+            for p in 1:length(landscape[i,j].species[1:end]) # Begin second loop over species
+                println("2")
+                if length(landscape[i,j].species[p][1:end,1])>0 # Check species population size
+                    println("2a")
+                    #=S_T, S_H = stress(landscape[i,j].species[p][1,2], # Calculating environmental stress for a species in a patch
+                               landscape[i,j].species[p][1,3],
+                               landscape[i,j].species[p][1,4],
+                               landscape[i,j].species[p][1,5],
+                               landscape[i,j].temp_t,
+                               landscape[i,j].habitat, trend)=#
+                    #println("S_T = $S_T, S_H = $S_H")
+                    #K = carry_capacity(300,S_T,S_H) # Calculates carrying capacity of a patch
+                    #println("K = $K")
+                    p_surv = expected_mort.(landscape[i,j].species[p][1:end,8],total_offspring,K) # Calculate expected mortality of oppspring
+                    if K > 0 # Note: May be unecessary in future model iterations. Consider removal.
+                        println("2a1")
+                        surviving = rand.(Binomial.(offspring[p], Float64.(p_surv))) # Calculate surviving offspring
+                    else
+                        println("2a2")
+                        surviving = 0
+                    end
+                    #println("Species $p has $surviving surviving offspring.")
+                    if sum(surviving) > 0 # Check number of survivors
+                        println("2a3")
+                        #println("Larger than zero")
+                        newgen = Array{Float32,2}(undef,sum(surviving),length(landscape[i,j].species[p][1,1:end])) # Creates an array of length sum(offspring) + new immigrants with data for species p & width of n traits
+                        ind = 1 # Keeps count of individual offspring added to newgen array
+                        for q in 1:length(surviving) # Goes down index of 'surviving'
+                            println("2a3a1")
+                            if surviving[q] > 0
+                                println("2a3a1a")
+                                #println("surviving > 0")
+                                for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
+                                    println("2a3a1a1")
+                                    newgen[ind,1:end] = landscape[i,j].species[p][q,1:end]  #
+                                    newgen[ind,9] = false
+                                    #println("$(newgen[ind,9])")
+                                    ind += 1
+                                end # End loop over survivng offspring
+                            end # End if statement
+                        end # End loop over index of 'survivng'
+                        #--------------------------------------------------------------------------------------------------------------------------------------
+
+                        #else #----------------------------------------------------------------------------------------------------------------------------------------------------
+                        #    println("2a3b")
+                        #    println("No survivors")
+                        #    newgen = Array{Float32,2}(undef,sum(surviving),length(landscape[i,j].species[p][1,1:end]))
+                        #    ind = 1 # Keeps count of individual offspring added to newgen array
+                        #    for q in 1:length(surviving) # Goes down index of 'surviving'
+                        #        println("2a3b1")
+                        #        if surviving[q] > 0
+                        #            println("2a3b1a")
+                        #            for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
+                        #                println("2a3b1a1")
+                        #                newgen[ind,1:end] = copy(landscape[i,j].species[p][q,1:end])  #
+                        #                newgen[ind,9] = false
+                        #                #println("$(newgen[ind,9])")
+                        #                ind += 1
+                        #            end # End loop over surviving offspring
+                        #        end # End if statement
+                        #    end # End loop over index of 'survivng'
+                        #end # End if-else statement #------------------------------------------------------------------------------------------------------------------------------------
+                        #println("2a4")
+                        #global landscape[i,j].species[p] = copy(newgen)
+                    else
+                        println("2a5")
+                        array = Array{Float32,2}(undef,0,length(landscape[i,j].species[p][1,1:end])) # If total offspring is 0, replaces landscape[i,j].species[p]
+                        global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
+                        #println("Set length of landscape[$i,$j].species[$p] to zero")
+                    end # End if-else statement
+                else
+                    println("2b")
+                    #println("No individuals of species $p present")
+                    array = Array{Float32,2}(undef,0,length(species_list[1,1:end]))
+                    global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
+                    #println("Set length of landscape[$i,$j].species[$p] to zero")
+                end # End if-else statement
+            end # End second loop over species
+        end # End landscape width loop
+    end # End landscape length loop
+    #println("End of function")
+end
+
+function demographics_immi(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int, e_immi, timestep)
+    println("demographics")
+    for i in 1:length(landscape[1:end,1]) # begin landscape length loop
+        for j in 1:length(landscape[1,1:end]) # Begin landscape width loop
+            #println("patch $i, $j")
+            offspring = Array{Array{Int,1},1}(undef,length(landscape[i,j].species[1:end])) # List of offspring for all species
+            total_offspring = 0 # Tally of all offpring of all species
+            for p in 1:length(landscape[i,j].species[1:end]) # Loop over species
+                #println("1")
+                sp_pop = length(landscape[i,j].species[p][1:end,1])
+                #println("Species $p pop. = $sp_pop")
+                if length(landscape[i,j].species[p][1:end,1])>0 # Check species population size
+                    println("1a")
+                    expected = expected_fert.(landscape[i,j].species[p][1:end,2],
+                               landscape[i,j].species[p][1:end,3],
+                               landscape[i,j].species[p][1:end,4],
+                               landscape[i,j].species[p][1:end,5],
+                               landscape[i,j].species[p][1:end,8],
+                               landscape[i,j].temp_t,
+                               landscape[i,j].habitat, niche_tradeoff,
+                               niche_tradeoff, trend) # Calculate expected offpring, see init_spp for trait key
+                    #println("expected offspring = $expected")
+                    global x = expected # Move to earlier position in loop structure.
+                    offspring[p] = rand.(Poisson.(Float64.(expected))) # Calculate offspring produced
+                    #println("Offspring = $offspring")
+                    species_offspring = sum(offspring[p]) # For diagnostic purposes. Will be removed once testing is finished
+                    #println("Total offspring of species $p = $species_offspring")
+                    total_offspring = total_offspring + species_offspring
+                    #println("total offspring = $total_offspring")
+                end
+            end # End loop over species
+
+
+            for p in 1:length(landscape[i,j].species[1:end]) # Begin second loop over species -------------------------------------------------------------------------------------------------------
+                println("2")
+                if length(landscape[i,j].species[p][1:end,1])>0 # If the patch population is larger than 0...
+                    println("2a")
+                    #=S_T, S_H = stress(landscape[i,j].species[p][1,2], # Calculating environmental stress for a species in a patch
+                               landscape[i,j].species[p][1,3],
+                               landscape[i,j].species[p][1,4],
+                               landscape[i,j].species[p][1,5],
+                               landscape[i,j].temp_t,
+                               landscape[i,j].habitat, trend)=#
+                    #println("S_T = $S_T, S_H = $S_H")
+                    #K = carry_capacity(300,S_T,S_H) # Calculates carrying capacity of a patch
+                    #println("K = $K")
+                    p_surv = expected_mort.(landscape[i,j].species[p][1:end,8],total_offspring,K) # Calculate expected mortality of oppspring
+                    if K > 0 # Note: May be unecessary in future model iterations. Consider removal.
+                        println("2a1")
+                        surviving = rand.(Binomial.(offspring[p], Float64.(p_surv))) # Calculate surviving offspring
+                    else
+                        println("2a2")
+                        surviving = 0
+                    end
+                    #println("Species $p has $surviving surviving offspring.")
+                    if sum(surviving) > 0 # Check number of survivors #------------------------------------------------------------------------------------------------------------------------------
+                        println("2a3")
+                        #println("Larger than zero")
+                        immigrants = rand(Poisson(e_immi))
+                        #println("immigrants: $immigrants")
+                        lenx = sum(surviving) + immigrants # make e_immi a dictionary parameter
+                        newgen = Array{Float32,2}(undef,lenx,length(landscape[i,j].species[p][1,1:end])) # Creates an array of length sum(offspring) + new immigrants with data for species p & width of n traits
+                        ind = 1 # Keeps count of individual offspring added to newgen array
+                        for q in 1:length(surviving) # Goes down index of 'surviving'
+                            println("2a3a1")
+                            if surviving[q] > 0
+                                println("2a3a1a")
+                                #println("surviving > 0")
+                                for r in 1:surviving[q] # Loop from 1 to number of surviving offspring
+                                    println("2a3a1a1")
+                                    newgen[ind,1:end] = landscape[i,j].species[p][q,1:end]  #
+                                    newgen[ind,9] = false
+                                    #println("$(newgen[ind,9])")
+                                    ind += 1
+                                end # End loop over survivng offspring
+                            end # End if statement
+                        end # End loop over index of 'survivng'
+                        for q in 1:immigrants # Begin loop over immigrants
+                            println("2a3a2")
+                            ind = q + sum(surviving) # Determines where in the array immigrants get put.
+                                                     # q + sum(surviving) ensures they do not overwrite existing organisms.
+                            immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
+                            ID = i              # Trait 1: Species ID number
+                            T_opt = (rand()*grad*1.5)-((grad*1.5)/2)+trend #8+22 # Trait 2: Temperature optimum
+                            T_sd = rand(LogNormal(0,1))    # Trait 3: Temperature tolerance
+                            H_opt = (rand()*grad*1.5)-((grad*1.5)/2)      # Trait 4: Habitat optimum
+                            H_sd = rand(LogNormal(0,1)) # Trait 5: Habitat tolerance
+                            Disp_l = rand()      # Trait 6: Dispersal probability
+                            Disp_g = rand()       # Trait 7: Global dispersal probability
+                            Fert_max = 15       # Trait 8: Maximum number of offspring
+                            dispersed = false   # Trait 9: Whether or not individual has already dispersed
+                            lineage = rand(Float32) # Trait 10: Lineage identifier
+                            origin_patch_x = i
+                            origin_patch_y = j
+                            origin_time = timestep
+                            immigrant = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x, origin_patch_y, origin_time]
+                            newgen[ind,1:end] = copy(immigrant)
+                        end # End loop over immigrants
+                    else # If there are no surviving offspring----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                        println("2a5")
+                        immigrants = rand(Poisson(e_immi)) # Check if there are any immigrants
+                        if length(immigrants) > 0
+                            newgen = Array{Float32,2}(undef,immigrants,length(landscape[i,j].species[p][1,1:end])) # newgen has dimensions n_immigrants by n_traits
+                            for q in 1:immigrants # Begin loop over immigrants
+                                println("2a3a2")
+                                ind = q + sum(surviving) # Determines where in the array immigrants get put.
+                                                         # q + sum(surviving) ensures they do not overwrite existing organisms.
+                                immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
+                                ID = i              # Trait 1: Species ID number
+                                T_opt = (rand()*grad*1.5)-((grad*1.5)/2)+trend #8+22 # Trait 2: Temperature optimum
+                                T_sd = rand(LogNormal(0,1))    # Trait 3: Temperature tolerance
+                                H_opt = (rand()*grad*1.5)-((grad*1.5)/2)      # Trait 4: Habitat optimum
+                                H_sd = rand(LogNormal(0,1)) # Trait 5: Habitat tolerance
+                                Disp_l = rand()      # Trait 6: Dispersal probability
+                                Disp_g = rand()       # Trait 7: Global dispersal probability
+                                Fert_max = 15       # Trait 8: Maximum number of offspring
+                                dispersed = false   # Trait 9: Whether or not individual has already dispersed
+                                lineage = rand(Float32) # Trait 10: Lineage identifier
+                                origin_patch_x = i
+                                origin_patch_y = j
+                                origin_time = timestep
+                                immigrant = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x, origin_patch_y, origin_time]
+                                newgen[ind,1:end] = copy(immigrant)
+                            end # End loop over immigrants
+                        else # If there are no immigrants
+                            array = Array{Float32,2}(undef,0,length(landscape[i,j].species[p][1,1:end])) # If total offspring is 0, replaces landscape[i,j].species[p]
+                            global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
+                            #println("Set length of landscape[$i,$j].species[$p] to zero")
+                        end
+                    end # End if-else statement
+                else # If the patch is completely empty...
+                    println("2b")
+                    #println("No individuals of species $p present")
+                    immigrants = rand(Poisson(e_immi)) # Check if there are any immigrants
+                    if immigrants > 0
+                        newgen = Array{Float32,2}(undef,immigrants,length(landscape[i,j].species[p][1,1:end])) # newgen has dimensions n_immigrants by n_traits
+                        for q in 1:immigrants # Begin loop over immigrants
+                            println("2a3a2")
+                            ind = q + sum(surviving) # Determines where in the array immigrants get put.
+                                                     # q + sum(surviving) ensures they do not overwrite existing organisms.
+                            immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
+                            ID = i              # Trait 1: Species ID number
+                            T_opt = (rand()*grad*1.5)-((grad*1.5)/2)+trend #8+22 # Trait 2: Temperature optimum
+                            T_sd = rand(LogNormal(0,1))    # Trait 3: Temperature tolerance
+                            H_opt = (rand()*grad*1.5)-((grad*1.5)/2)      # Trait 4: Habitat optimum
+                            H_sd = rand(LogNormal(0,1)) # Trait 5: Habitat tolerance
+                            Disp_l = rand()      # Trait 6: Dispersal probability
+                            Disp_g = rand()       # Trait 7: Global dispersal probability
+                            Fert_max = 15       # Trait 8: Maximum number of offspring
+                            dispersed = false   # Trait 9: Whether or not individual has already dispersed
+                            lineage = rand(Float32) # Trait 10: Lineage identifier
+                            origin_patch_x = i
+                            origin_patch_y = j
+                            origin_time = timestep
+                            immigrant = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x, origin_patch_y, origin_time]
+                            newgen[ind,1:end] = copy(immigrant)
+                        end # End loop over immigrants
+                    else
+                        array = Array{Float32,2}(undef,0,length(species_list[1,1:end]))
+                        global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
+                        #println("Set length of landscape[$i,$j].species[$p] to zero")
+                    end
+                end # End if-else statement
+            end # End second loop over species
+        end # End landscape width loop
+    end # End landscape length loop
+    #println("End of function")
+end
+
 # Calculates number of offspring for each individual. Offspring form the next generation of individuals.
-function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int,burnin, immi,p_immi,e_immi,timestep)
+function demographics_old(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int,burnin, immi,p_immi,e_immi,timestep)
     println("demographics")
     for i in 1:length(landscape[1:end,1]) # begin landscape length loop
         for j in 1:length(landscape[1,1:end]) # Begin landscape width loop
@@ -171,12 +455,12 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                                 origin_patch_x = i
                                 origin_patch_y = j
                                 origin_time = timestep
-                                immigrant = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage]
+                                immigrant = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x, origin_patch_y, origin_time]
                                 newgen[ind,1:end] = copy(immigrant)
                             end # End loop over immigrants
                         else
                             println("2a3b")
-                            #println("No survivors")
+                            println("No survivors")
                             newgen = Array{Float32,2}(undef,sum(surviving),length(landscape[i,j].species[p][1,1:end]))
                             ind = 1 # Keeps count of individual offspring added to newgen array
                             for q in 1:length(surviving) # Goes down index of 'surviving'
@@ -187,7 +471,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                                         println("2a3b1a1")
                                         newgen[ind,1:end] = copy(landscape[i,j].species[p][q,1:end])  #
                                         newgen[ind,9] = false
-                                        println("$(newgen[ind,9])")
+                                        #println("$(newgen[ind,9])")
                                         ind += 1
                                     end # End loop over surviving offspring
                                 end # End if statement
@@ -199,7 +483,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                         println("2a5")
                         array = Array{Float32,2}(undef,0,length(landscape[i,j].species[p][1,1:end])) # If total offspring is 0, replaces landscape[i,j].species[p]
                         global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
-                        println("Set length of landscape[$i,$j].species[$p] to zero")
+                        #println("Set length of landscape[$i,$j].species[$p] to zero")
                     end # End if-else statement
                 else
                     println("2b")
@@ -211,7 +495,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
             end # End second loop over species
         end # End landscape width loop
     end # End landscape length loop
-    println("End of function")
+    #println("End of function")
 end # End function
 
 #----------------------------------------

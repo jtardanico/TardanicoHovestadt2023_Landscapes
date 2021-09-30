@@ -101,13 +101,13 @@ function simulation_run()
                 println("burn-in time step: $b")
                 burnin = true
                 #println("Beginning burn-in timestep $b.")
-                println("Starting dispersal routine.")
-                println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
+                #println("Starting dispersal routine.")
+                #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
                 dispersal!(landscape)
-                println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
-                println("Starting reproduction routine.")
-                demographics(landscape,α,0,grad,K,burnin,immi,p_immi,e_immi,b)
-                println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
+                #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
+                #println("Starting reproduction routine.")
+                demographics(landscape,α,0,grad,K,b)
+                #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
                 if mut==true
                     mutate(landscape,p_mut,mut_sd,mut_decay,b)
                 end
@@ -128,12 +128,12 @@ function simulation_run()
             end
             burnin = false
             println("Beginning timestep $t.")
-            println("Starting dispersal routine.")
-            println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
+            #println("Starting dispersal routine.")
+            #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
             dispersal!(landscape)
-            println("Starting reproduction routine.")
-            println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
-            demographics(landscape,α,trend[t],grad,K,burnin,immi,p_immi,e_immi,step)
+            #println("Starting reproduction routine.")
+            #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
+            demographics_immi(landscape,α,trend[t],grad,K,e_immi,step)
             if mut==true
                 mutate(landscape,p_mut,mut_sd,mut_decay,step)
             end
