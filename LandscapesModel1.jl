@@ -82,6 +82,7 @@ function simulation_run()
     dir = par["dir"]
     println("parasource = $parasource")
     println("Climate scenario $scen")
+    println("carry capacity = $K")
     println(dir)
     filename,tempsource,envsource = set_filename(ArgDict,par,scen,grad)
     #Random.seed!(123)
@@ -107,7 +108,7 @@ function simulation_run()
                 #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
                 #println("Starting reproduction routine.")
                 demographics(landscape,α,0,grad,K,b)
-                #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
+                println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
                 if mut==true
                     mutate(landscape,p_mut,mut_sd,mut_decay,b)
                 end
@@ -132,8 +133,12 @@ function simulation_run()
             #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
             dispersal!(landscape)
             #println("Starting reproduction routine.")
-            #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
-            demographics_immi(landscape,α,trend[t],grad,K,e_immi,step)
+            if par["immi"]==true
+                demographics_immi(landscape,α,trend[t],grad,K,e_immi,step)
+            else
+                demographics(landscape,α,0,grad,K,step)
+            end
+            println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
             if mut==true
                 mutate(landscape,p_mut,mut_sd,mut_decay,step)
             end

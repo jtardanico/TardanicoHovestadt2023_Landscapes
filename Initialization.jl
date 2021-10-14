@@ -224,9 +224,9 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient,para
             #if (i==1 ) && (j==1) # Use this to initialize a population in only one patch
             #    patchpop = init_popgrad(init_pop,parameters,i,j)
             #    println(typeof(patchpop))
-                len = length(patchpop[1][1:end,1])
-                wid = length(patchpop[1][1,1:end])
-                println("Initial patchpop dims: $len, $wid")
+                #len = length(patchpop[1][1:end,1])
+                #wid = length(patchpop[1][1,1:end])
+                #println("Initial patchpop dims: $len, $wid")
             #else
             #    patchpop = Array{Array{Float32,2},1}(undef,1)
             #    patchpop[1] = Array{Float32,2}(undef,0,10)
