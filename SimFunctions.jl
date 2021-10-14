@@ -500,6 +500,8 @@ function demographics_old(landscape::Array{TPatch, 2},niche_tradeoff, trend, gra
                     println("2b")
                     #println("No individuals of species $p present")
                     array = Array{Float32,2}(undef,0,length(species_list[1,1:end]))
+                    display(array)
+                    println(" ")
                     global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
                     #println("Set length of landscape[$i,$j].species[$p] to zero")
                 end # End if-else statement
@@ -586,7 +588,7 @@ function disperse_local(trow_l::Int, tcol_l::Int, outofbounds_l::Bool, i::Int, j
 end
 
 function disperse_global(trow_g::Int,tcol_g::Int,outofbounds_g::Bool,i::Int,j::Int,k::Int,l::Int)
-    #println("Initiating global dispersal")
+    println("Initiating global dispersal")
     #println("outofbounds = $outofbounds_g")
     if outofbounds_g == false
         len = length(landscape[i,j].species[k][1:end,1])
@@ -594,16 +596,25 @@ function disperse_global(trow_g::Int,tcol_g::Int,outofbounds_g::Bool,i::Int,j::I
         #println("Patch $i,$j, dims = $len,$wid")
         #println("Target patch: $trow_g, $tcol_g")
         global landscape[i,j].species[k][l,9] = true
+        #println("2")
+        #print(typeof(landscape[i,j].species[k][l,1:end]))
+        #display(landscape[i,j].species[k][l,1:end])
+        #println(" ")
+        #println("3")
         migrant = reshape(landscape[i,j].species[k][l,1:end],1,length(landscape[i,j].species[k][l,1:end])) # Reshapes vector from a 3 by 1 array to a 1 by 3 array. Needed for vcat to work.
         #len = length(migrant[1:end,1])
         #wid = length(migrant[1,1:end])
         #println("migrant array, dims = $len,$wid")
         global landscape[trow_g,tcol_g].species[k] = vcat(landscape[trow_g,tcol_g].species[k],migrant) # Adds the individual to the target patch.
+        #println("8")
         #println("Added individual of species $k to patch $trow_g, $tcol_g")
         global landscape[i,j].species[k] = landscape[i,j].species[k][setdiff(1:end,l),:] # Removes the individual from the natal patch
         #println("Removed individual of species $k from patch $i, $j")
+        #println("9")
     else
+        #println("10")
         global landscape[i,j].species[k] = landscape[i,j].species[k][setdiff(1:end,l),:]
+        #println("11")
         #println("Removed individual of species $k from patch $i, $j")
     end
 end

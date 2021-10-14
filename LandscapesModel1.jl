@@ -182,6 +182,7 @@ end
 
     println("Loading PatchStatistics.jl")
     include("PatchStatistics.jl")
+    include("Misc.jl")
     #include("Misc.jl")
     simulation_run()
 end
