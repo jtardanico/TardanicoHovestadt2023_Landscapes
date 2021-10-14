@@ -74,7 +74,7 @@ end
 # Creates an array with dimentions n_species and n_traits which acts as a master list of all species in the simulation
 function init_spp(n_species::Int)
     #println("Initializing species master list...")
-    n_traits = 9
+    n_traits = 13
     global species_list = Array{Any,2}(undef,n_species,n_traits)
     for i in 1:n_species
         ID = i              # Trait 1: Species ID number
@@ -86,14 +86,17 @@ function init_spp(n_species::Int)
         Disp_g = 0.01       # Trait 7: Global dispersal probability
         Fert_max = 10       # Trait 8: Maximum number of offspring
         dispersed = false   # Trait 9: Whether or not individual has already dispersed
-        global species_list[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed]
+        origin_patch_x = "x"
+        origin_patch_y = "y"
+        origin_time = "timestep"
+        global species_list[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, origin_patch_x, origin_patch_y, origin_time]
     end
 end
 
 # Creates a 1x9 array listing species traits. For use with function "simulation_run2"
 function init_spp2()
     #println("Initializing species master list...")
-    n_traits = 10
+    n_traits = 13
     global species_list = Array{Any,2}(undef,1,n_traits)
         ID = 1              # Trait 1: Species ID number
         T_opt = "10-30" #8+22 # Trait 2: Temperature optimum
@@ -105,7 +108,10 @@ function init_spp2()
         Fert_max = "5-30"       # Trait 8: Maximum number of offspring
         dispersed = "N/A"   # Trait 9: Whether or not individual has already dispersed
         lineage = "N/A"    # Trait 10: Lineage identifier
-        global species_list[1,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage]
+        origin_patch_x = "x"
+        origin_patch_y = "y"
+        origin_time = "timestep"
+        global species_list[1,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x, origin_patch_y, origin_time]
 end
 
 # Initialization of species populations
@@ -147,7 +153,7 @@ function init_popgrad(n_pop::Int,par::Dict,x::Int,y::Int)
         origin_patch_x = x
         origin_patch_y = y
         origin_time = -1
-        population[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x ,origin_patch_y, origin_time,]
+        population[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x ,origin_patch_y, origin_time]
     end
     patchpop[1] = population
     return patchpop
@@ -198,10 +204,14 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient,para
     #println("init_world")
     init_pop = parameters["initial_pop"]
     temperatures, environments = read_world_source(worldtempsource,worldenvsource)
+    typeof(temperatures) # For debugging diagnostics
+    typeof(environments)
     temperatures = temperatures * gradient
     environments = environments * gradient
     nrows = length(temperatures[1:end,1])
+    println("nrows = $nrows")
     ncols = length(temperatures[1,1:end])
+    println("ncols = $ncols")
     m_t, v_t = mean_and_var(temperatures)
     m_e, v_e = mean_and_var(environments)
     global landscape = Array{TPatch, 2}(undef, nrows, ncols)
@@ -210,8 +220,13 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient,para
             row = i
             col = j
             patchpop = init_popgrad(init_pop,parameters,i,j)
-            #if (i==1 ) && (j==1)
-            #    patchpop = init_popgrad(100,0.5,0.5)
+
+            #if (i==1 ) && (j==1) # Use this to initialize a population in only one patch
+            #    patchpop = init_popgrad(init_pop,parameters,i,j)
+            #    println(typeof(patchpop))
+                #len = length(patchpop[1][1:end,1])
+                #wid = length(patchpop[1][1,1:end])
+                #println("Initial patchpop dims: $len, $wid")
             #else
             #    patchpop = Array{Array{Float32,2},1}(undef,1)
             #    patchpop[1] = Array{Float32,2}(undef,0,10)
@@ -220,6 +235,7 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient,para
             habitat = environments[i,j]
             precip = 0
             patch = TPatch(row,col,patchpop,temp,precip,habitat)
+            #println("patch: $i, $j, ", length(patch.species[1][1:end,1]))
             landscape[i,j] = patch
         end
     end

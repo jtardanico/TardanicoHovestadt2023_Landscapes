@@ -44,3 +44,14 @@ function checkarray(array)
         println("$i : $(array[i])")
     end
 end
+
+function get_patchpop_dims(landscape)
+    for i in 1:length(landscape[1:end,1])
+        for j in 1:length(landscape[1,1:end])
+            for k in 1:length(landscape[i,j].species)
+                display(landscape[i,j].species[k])
+                println(" ")
+            end
+        end
+    end
+end
