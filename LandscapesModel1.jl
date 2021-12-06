@@ -91,6 +91,9 @@ function simulation_run()
         println("Initializing world.")
         init_world(tempsource,envsource,grad,par)
         generate_climate_trend(tmax,0,1,scen)
+        if haskey(par,"cmax")==true
+            trend2, mean_trend2 = generate_climate_trend2(par["cmax"],0,1,par["c_change"])
+        end
         println(length(trend))
         init_spp2()
         println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
@@ -99,7 +102,7 @@ function simulation_run()
         if par["burnin"] == true
             println("Starting burn-in period.")
             for b in 1:bmax
-                println("burn-in time step: $b")
+                #println("burn-in time step: $b")
                 burnin = true
                 #println("Beginning burn-in timestep $b.")
                 #println("Starting dispersal routine.")
@@ -108,7 +111,7 @@ function simulation_run()
                 #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
                 #println("Starting reproduction routine.")
                 demographics(landscape,α,0,grad,K,b)
-                println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
+                #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
                 if mut==true
                     mutate(landscape,p_mut,mut_sd,mut_decay,b)
                 end
@@ -128,17 +131,17 @@ function simulation_run()
                 step=t
             end
             burnin = false
-            println("Beginning timestep $t.")
+            #println("Beginning timestep $t.")
             #println("Starting dispersal routine.")
             #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
             dispersal!(landscape)
             #println("Starting reproduction routine.")
             if par["immi"]==true
-                demographics_immi(landscape,α,trend[t],grad,K,e_immi,step)
+                demographics_immi(landscape,α,trend[t],grad,K,e_immi,step,par)
             else
                 demographics(landscape,α,0,grad,K,step)
             end
-            println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
+            #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
             if mut==true
                 mutate(landscape,p_mut,mut_sd,mut_decay,step)
             end
@@ -147,6 +150,33 @@ function simulation_run()
                 write_landscape_csv(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,par["autocor_temp"],par["autocor_env"],α)
             end
             #println("End timestep $t.")
+        end
+        if haskey(par,"cmax")==true
+            println("Starting climate trend period.")
+            for c in 1:par["cmax"]
+                #println("Trend time step: $c")
+                step=tmax+c
+                #println("Beginning burn-in timestep $b.")
+                #println("Starting dispersal routine.")
+                #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
+                dispersal!(landscape)
+                #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
+                #println("Starting reproduction routine.")
+                #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
+                if par["immi"]==true
+                    demographics_immi(landscape,α,trend2[c],grad,K,e_immi,step,par)
+                else
+                    demographics(landscape,α,trend2[c],grad,K,step)
+                end
+                if mut==true
+                    mutate(landscape,p_mut,mut_sd,mut_decay,step)
+                end
+                write_landscape_stats(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α,bmax)
+                if mod(step,50)==0 || c==par["cmax"]
+                    write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                end
+                #println("End timestep $t.")
+            end
         end
         popcount(landscape)
         println("End time loop. Analyzing landscape.")

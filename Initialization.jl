@@ -141,9 +141,9 @@ function init_popgrad(n_pop::Int,par::Dict,x::Int,y::Int)
     population = Array{Float32,2}(undef,n_pop,n_traits)
     for i in 1:n_pop
         ID = i              # Trait 1: Species ID number
-        T_opt = rand(Normal(par["topt_µ"],par["topt_σ"])) #8+22 # Trait 2: Temperature optimum
+        T_opt = rand(Normal(par["topt_µ"],par["topt_σ"])) * par["grad"] #8+22 # Trait 2: Temperature optimum
         T_sd = rand(LogNormal(par["tsd_µ"],par["tsd_σ"]))    # Trait 3: Temperature tolerance
-        H_opt = rand(Normal(par["hopt_µ"],par["hopt_σ"]))    # Trait 4: Habitat optimum
+        H_opt = rand(Normal(par["hopt_µ"],par["hopt_σ"])) * par["grad"]   # Trait 4: Habitat optimum
         H_sd = rand(LogNormal(par["hsd_µ"],par["hsd_σ"])) # Trait 5: Habitat tolerance
         Disp_l = rand()      # Trait 6: Dispersal probability
         Disp_g = rand()       # Trait 7: Global dispersal probability
@@ -196,6 +196,19 @@ function generate_climate_trend(nsteps::Int,mean,sd,trend_type::Int)
         println("3: Increasing mean, constant variance")
         exit(code=0)
     end
+end
+
+# Generates a second climate trend
+function generate_climate_trend2(nsteps::Int,mean,sd,change)
+    t = Array{Float32,1}(undef,nsteps)
+    t_mean = Array{Float32,1}(undef,nsteps)
+    for i in 1:nsteps
+        t[i] = change*i + rand(Normal(mean,sd))
+        t_mean[i] =  change*i # mean trend
+    end
+    trend2 = t
+    mean_trend2 = t_mean
+    return trend2, mean_trend2
 end
 
 # Initializes a landscape from file inputs.

@@ -38,6 +38,29 @@ function simpson(i)
     return λ
 end
 
+# Prints info on a data frame regarding: dimensions, missing values, and NaNs.
+function df_info(data::DataFrame)
+    println("Data file dimensions")
+    println("---------------------")
+    println("cols: ",length(data[1,1:end]))
+    println("rows: ",length(data[1:end,1]))
+    println("")
+    println("Missing values and NaNs")
+    println("-----------------------")
+    for col in names(data)
+        println("Column $col")
+        println("Length:")
+        println(length(data[1:end,Symbol(col)]))
+        println("Missing:")
+        println(length(filter(ismissing,data[:,Symbol(col)])))
+        if length(filter(x->x==true,isa.(data[:,Symbol(col)],Number))) > 0
+            println("Nans:")
+            println(length(filter(isnan,data[:,Symbol(col)])))
+        end
+    end
+    println("")
+end
+
 # Creates a data frame of length x*y*timesteps*replicates containing simulation parameters and baseline patch attributes for all patches.
 function patch_attributes(tempsource,envsource,data)
     temp_landscape = readdlm(tempsource,';')
@@ -121,8 +144,10 @@ function calculations(data,tempsource,envsource)
 
     println(data)
     data = DataFrame(CSV.File(data))
-
+    println(tempsource)
+    println(envsource)
     atts = patch_attributes(tempsource,envsource,data)
+    df_info(data)
 
     data.H_t = string.(data.H_t)
     data.H_h = string.(data.H_h)
@@ -297,7 +322,7 @@ function patchstats(dir::String,filename::String,tempsource::String,envsource::S
     println("Calculating patch stats...")
     outfile = string(dir,filename,"patches.txt")
     println("Output file: $outfile")
-    infiles = string.(dir,readdir(dir))
+    infiles = readdir(dir)
     n_files = length(infiles)
     println("No. files in directory = $n_files")
     println("Files in directory:")
@@ -305,6 +330,13 @@ function patchstats(dir::String,filename::String,tempsource::String,envsource::S
         println(infiles[i])
     end
     println("")
+    println("-----------------------")
+    println("Contains filename:")
+    println(occursin.(filename,infiles))
+    println("")
+    println("Contains 'trend':")
+    println(occursin.("trend",infiles))
+    println("------------------------")
     filter!(x -> occursin(filename,x)==true, infiles)
     n_files = length(infiles)
     println("No. files = $n_files") # <----------------
@@ -313,6 +345,8 @@ function patchstats(dir::String,filename::String,tempsource::String,envsource::S
         println(infiles[i])
     end
     println("")
+    #rx = r"[^\\/]*\.txt"
+
     filter!(x -> occursin("trend",x)==false, infiles)
     n_files = length(infiles)
     println("No. files = $n_files")
@@ -322,7 +356,9 @@ function patchstats(dir::String,filename::String,tempsource::String,envsource::S
     end
     println("")
     for i in 1:length(infiles)
-        patchstats = calculations(infiles[i],tempsource,envsource)
+        data = string(dir,infiles[i])
+        patchstats = calculations(data,tempsource,envsource)
+
         if i==1
             CSV.write(outfile,patchstats,append=false)
         else

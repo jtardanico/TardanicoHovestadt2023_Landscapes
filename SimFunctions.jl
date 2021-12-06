@@ -191,7 +191,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
     #println("End of function")
 end
 
-function demographics_immi(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K::Int, e_immi, timestep)
+function demographics_immi(landscape::Array{TPatch, 2},niche_tradeoff, trend, K::Int, e_immi, timestep, par::Dict)
     #println("demographics_immi")
     for i in 1:length(landscape[1:end,1]) # begin landscape length loop
         for j in 1:length(landscape[1,1:end]) # Begin landscape width loop
@@ -274,10 +274,14 @@ function demographics_immi(landscape::Array{TPatch, 2},niche_tradeoff, trend, gr
                                                      # q + sum(surviving) ensures they do not overwrite existing organisms.
                             immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
                             ID = i              # Trait 1: Species ID number
-                            T_opt = (rand()*grad*1.5)-((grad*1.5)/2)+trend #8+22 # Trait 2: Temperature optimum
-                            T_sd = rand(LogNormal(0,1))    # Trait 3: Temperature tolerance
-                            H_opt = (rand()*grad*1.5)-((grad*1.5)/2)      # Trait 4: Habitat optimum
-                            H_sd = rand(LogNormal(0,1)) # Trait 5: Habitat tolerance
+                            T_opt = rand(Normal(0,1)) * par["grad"] + trend #8+22 # Trait 2: Temperature optimum
+                            T_sd = rand(LogNormal(par["tsd_µ"],par["tsd_σ"]))    # Trait 3: Temperature tolerance
+                            H_opt = rand(Normal(0,1)) * par["grad"]   # Trait 4: Habitat optimum
+                            H_sd = rand(LogNormal(par["hsd_µ"],par["hsd_σ"])) # Trait 5: Habitat tolerance
+                            #T_opt = (rand()*grad*1.5)-((grad*1.5)/2)+trend #8+22 # Trait 2: Temperature optimum
+                            #T_sd = rand(LogNormal(0,1))    # Trait 3: Temperature tolerance
+                            #H_opt = (rand()*grad*1.5)-((grad*1.5)/2)      # Trait 4: Habitat optimum
+                            #H_sd = rand(LogNormal(0,1)) # Trait 5: Habitat tolerance
                             Disp_l = rand()      # Trait 6: Dispersal probability
                             Disp_g = rand()       # Trait 7: Global dispersal probability
                             Fert_max = 15       # Trait 8: Maximum number of offspring
@@ -303,10 +307,14 @@ function demographics_immi(landscape::Array{TPatch, 2},niche_tradeoff, trend, gr
                                                          # q + sum(surviving) ensures they do not overwrite existing organisms.
                                 immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
                                 ID = i              # Trait 1: Species ID number
-                                T_opt = (rand()*grad*1.5)-((grad*1.5)/2)+trend #8+22 # Trait 2: Temperature optimum
-                                T_sd = rand(LogNormal(0,1))    # Trait 3: Temperature tolerance
-                                H_opt = (rand()*grad*1.5)-((grad*1.5)/2)      # Trait 4: Habitat optimum
-                                H_sd = rand(LogNormal(0,1)) # Trait 5: Habitat tolerance
+                                T_opt = rand(Normal(0,1)) * par["grad"] + trend #8+22 # Trait 2: Temperature optimum
+                                T_sd = rand(LogNormal(par["tsd_µ"],par["tsd_σ"]))    # Trait 3: Temperature tolerance
+                                H_opt = rand(Normal(0,1)) * par["grad"]   # Trait 4: Habitat optimum
+                                H_sd = rand(LogNormal(par["hsd_µ"],par["hsd_σ"])) # Trait 5: Habitat tolerance
+                                #T_opt = (rand()*grad*1.5)-((grad*1.5)/2)+trend #8+22 # Trait 2: Temperature optimum
+                                #T_sd = rand(LogNormal(0,1))    # Trait 3: Temperature tolerance
+                                #H_opt = (rand()*grad*1.5)-((grad*1.5)/2)      # Trait 4: Habitat optimum
+                                #H_sd = rand(LogNormal(0,1)) # Trait 5: Habitat tolerance
                                 Disp_l = rand()      # Trait 6: Dispersal probability
                                 Disp_g = rand()       # Trait 7: Global dispersal probability
                                 Fert_max = 15       # Trait 8: Maximum number of offspring
@@ -339,10 +347,14 @@ function demographics_immi(landscape::Array{TPatch, 2},niche_tradeoff, trend, gr
                                                      # q + sum(surviving) ensures they do not overwrite existing organisms.
                             immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
                             ID = i              # Trait 1: Species ID number
-                            T_opt = (rand()*grad*1.5)-((grad*1.5)/2)+trend #8+22 # Trait 2: Temperature optimum
-                            T_sd = rand(LogNormal(0,1))    # Trait 3: Temperature tolerance
-                            H_opt = (rand()*grad*1.5)-((grad*1.5)/2)      # Trait 4: Habitat optimum
-                            H_sd = rand(LogNormal(0,1)) # Trait 5: Habitat tolerance
+                            T_opt = rand(Normal(0,1)) * par["grad"] + trend #8+22 # Trait 2: Temperature optimum
+                            T_sd = rand(LogNormal(par["tsd_µ"],par["tsd_σ"]))    # Trait 3: Temperature tolerance
+                            H_opt = rand(Normal(0,1)) * par["grad"]   # Trait 4: Habitat optimum
+                            H_sd = rand(LogNormal(par["hsd_µ"],par["hsd_σ"])) # Trait 5: Habitat tolerance
+                            #T_opt = (rand()*grad*1.5)-((grad*1.5)/2)+trend #8+22 # Trait 2: Temperature optimum
+                            #T_sd = rand(LogNormal(0,1))    # Trait 3: Temperature tolerance
+                            #H_opt = (rand()*grad*1.5)-((grad*1.5)/2)      # Trait 4: Habitat optimum
+                            #H_sd = rand(LogNormal(0,1)) # Trait 5: Habitat tolerance
                             Disp_l = rand()      # Trait 6: Dispersal probability
                             Disp_g = rand()       # Trait 7: Global dispersal probability
                             Fert_max = 15       # Trait 8: Maximum number of offspring
@@ -588,7 +600,7 @@ function disperse_local(trow_l::Int, tcol_l::Int, outofbounds_l::Bool, i::Int, j
 end
 
 function disperse_global(trow_g::Int,tcol_g::Int,outofbounds_g::Bool,i::Int,j::Int,k::Int,l::Int)
-    println("Initiating global dispersal")
+    #println("Initiating global dispersal")
     #println("outofbounds = $outofbounds_g")
     if outofbounds_g == false
         len = length(landscape[i,j].species[k][1:end,1])
