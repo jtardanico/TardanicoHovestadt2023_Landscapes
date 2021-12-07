@@ -50,6 +50,15 @@ end
 #----------------------------------------------
 # Main Program
 #----------------------------------------------
+function dict_info(par::Dict)
+    println("=========================")
+    println("Parameter Dict Info")
+    for (key, value) in par
+        println(key, ": ",value,",", typeof(value))
+    end
+    println("=========================")
+    println("")
+end
 println("compiling main sim function")
 # Run simulation using landscape and parameters from input files. Requires inputs for temperature, environment,
 # scen,grad... are loop indices for different scenarios (e.g. climate trend, gradient strength)
@@ -61,6 +70,7 @@ function simulation_run()
     println(parasource)
     println(typeof(parasource))
     par = include(parasource) # See parameter config file (ParaDict) for parameter overview
+    dict_info(par)
     if haskey(par,"seed")==true# Checks of parasource includes a key for the RNG seed
         Random.seed!(par["seed"])
     end
@@ -80,6 +90,10 @@ function simulation_run()
     p_immi = par["p_immi"]
     e_immi = par["e_immi"]
     dir = par["dir"]
+    if isdir(dir)==false
+        println("Directory not found. Creating output directory.")
+        mkpath(dir)
+    end
     println("parasource = $parasource")
     println("Climate scenario $scen")
     println("carry capacity = $K")
@@ -137,7 +151,7 @@ function simulation_run()
             dispersal!(landscape)
             #println("Starting reproduction routine.")
             if par["immi"]==true
-                demographics_immi(landscape,α,trend[t],grad,K,e_immi,step,par)
+                demographics_immi(landscape,par,α,trend[t],K,e_immi,step)
             else
                 demographics(landscape,α,0,grad,K,step)
             end
@@ -164,7 +178,7 @@ function simulation_run()
                 #println("Starting reproduction routine.")
                 #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
                 if par["immi"]==true
-                    demographics_immi(landscape,α,trend2[c],grad,K,e_immi,step,par)
+                    demographics_immi(landscape,par,α,trend2[c],K,e_immi,step)
                 else
                     demographics(landscape,α,trend2[c],grad,K,step)
                 end

@@ -191,7 +191,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
     #println("End of function")
 end
 
-function demographics_immi(landscape::Array{TPatch, 2},niche_tradeoff, trend, K::Int, e_immi, timestep, par::Dict)
+function demographics_immi(landscape::Array{TPatch, 2},par::Dict,niche_tradeoff, trend, K, e_immi, timestep)
     #println("demographics_immi")
     for i in 1:length(landscape[1:end,1]) # begin landscape length loop
         for j in 1:length(landscape[1,1:end]) # Begin landscape width loop
