@@ -150,9 +150,9 @@ function init_popgrad(n_pop::Int,par::Dict,x::Int,y::Int)
         Fert_max = 15       # Trait 8: Maximum number of offspring
         dispersed = false   # Trait 9: Whether or not individual has already dispersed
         lineage = rand(Float32) # Trait 10: Lineage identifier
-        origin_patch_x = x
-        origin_patch_y = y
-        origin_time = -1
+        origin_patch_x = x # Trait 11: X index of patch of first appearance
+        origin_patch_y = y # Trait 12: Y index of patch of first appearance
+        origin_time = -1 # Trait 13: Timestep of first appearance
         population[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x ,origin_patch_y, origin_time]
     end
     patchpop[1] = population
@@ -237,12 +237,12 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient,para
             #if (i==1 ) && (j==1) # Use this to initialize a population in only one patch
             #    patchpop = init_popgrad(init_pop,parameters,i,j)
             #    println(typeof(patchpop))
-                #len = length(patchpop[1][1:end,1])
-                #wid = length(patchpop[1][1,1:end])
-                #println("Initial patchpop dims: $len, $wid")
+            #    len = length(patchpop[1][1:end,1])
+            #    wid = length(patchpop[1][1,1:end])
+            #    println("Initial patchpop dims: $len, $wid")
             #else
             #    patchpop = Array{Array{Float32,2},1}(undef,1)
-            #    patchpop[1] = Array{Float32,2}(undef,0,10)
+            #    patchpop[1] = Array{Float32,2}(undef,0,13)
             #end
             temp = temperatures[i,j]
             habitat = environments[i,j]

@@ -53,7 +53,7 @@ function mutate(landscape::Array{TPatch,2},p_mut,mut_sd,mut_decay,timestep)
                                  d = 1
                                  #println("d set to $d")
                              end
-                             landscape[i,j].species[p][indices[q],7] = copy(d)
+                             landscape[i,j].species[p][indices[q],6] = copy(d)
                              d = landscape[i,j].species[p][indices[q],7] .+ rand(Normal(0,mut_t)) # Global dispersal
                              if d .< 0
                                  d = 0
@@ -588,7 +588,7 @@ function disperse_local(trow_l::Int, tcol_l::Int, outofbounds_l::Bool, i::Int, j
         migrant = reshape(landscape[i,j].species[k][l,1:end],1,length(landscape[i,j].species[k][l,1:end])) # Reshapes vector from a 3 by 1 array to a 1 by 3 array. Needed for vcat to work.
         #println("migrant = $migrant")
         global landscape[trow_l,tcol_l].species[k] = vcat(landscape[trow_l,tcol_l].species[k],migrant) # Adds the individual to the target patch.
-        #newindex = length(landscape[trow_l,tcol_l].species[k])
+        newindex = length(landscape[trow_l,tcol_l].species[k])
         #println("individual at $trow_l $tcol_l $k = $(landscape[trow_l,tcol_l].species[k][newindex,1:end])")
         #println("Added individual of species $k to patch $trow_l, $tcol_l ")
         global landscape[i,j].species[k] = landscape[i,j].species[k][setdiff(1:end,l),:] # Removes the individual from the natal patch
@@ -614,8 +614,8 @@ function disperse_global(trow_g::Int,tcol_g::Int,outofbounds_g::Bool,i::Int,j::I
         #println(" ")
         #println("3")
         migrant = reshape(landscape[i,j].species[k][l,1:end],1,length(landscape[i,j].species[k][l,1:end])) # Reshapes vector from a 3 by 1 array to a 1 by 3 array. Needed for vcat to work.
-        #len = length(migrant[1:end,1])
-        #wid = length(migrant[1,1:end])
+        len = length(migrant[1:end,1])
+        wid = length(migrant[1,1:end])
         #println("migrant array, dims = $len,$wid")
         global landscape[trow_g,tcol_g].species[k] = vcat(landscape[trow_g,tcol_g].species[k],migrant) # Adds the individual to the target patch.
         #println("8")

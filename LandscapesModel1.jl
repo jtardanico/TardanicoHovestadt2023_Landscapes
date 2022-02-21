@@ -116,6 +116,9 @@ function simulation_run()
         if par["burnin"] == true
             println("Starting burn-in period.")
             for b in 1:bmax
+                if b==bmax
+                    println("step =",step)
+                end
                 #println("burn-in time step: $b")
                 burnin = true
                 #println("Beginning burn-in timestep $b.")
@@ -144,6 +147,9 @@ function simulation_run()
             else
                 step=t
             end
+            if t==tmax
+                println("step =",step)
+            end   
             burnin = false
             #println("Beginning timestep $t.")
             #println("Starting dispersal routine.")
@@ -169,7 +175,13 @@ function simulation_run()
             println("Starting climate trend period.")
             for c in 1:par["cmax"]
                 #println("Trend time step: $c")
-                step=tmax+c
+                if par["burnin"] == true
+                    step=tmax+bmax+c
+                    print("step=",step)
+                else
+                    step=tmax+c
+                    print("step=",step)
+                end
                 #println("Beginning burn-in timestep $b.")
                 #println("Starting dispersal routine.")
                 #println("Patch 1,1 pop: ",length(landscape[1,1].species[1][1:end,1]))
