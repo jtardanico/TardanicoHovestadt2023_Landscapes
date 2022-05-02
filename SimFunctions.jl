@@ -529,6 +529,7 @@ end # End function
 # FUnction for deterimining target patch for nearest neighbor dispersal. Patch is row no. ± 1 and column no. ± 1.
 # Function will try to get a new target if the current target patch is the same as the natal patch.
 # The function will also check if the target is outside the landscape.
+# If the target patch is outside of the landscape, the organism will move to the other side of the landscape.
 function get_target_local(nrows::Int,ncols::Int,i::Int,j::Int)
     #println("get_target_local")
     #println("Getting local dispersal target patch...")
@@ -552,17 +553,25 @@ function get_target_local(nrows::Int,ncols::Int,i::Int,j::Int)
         target_row = i + rand(-1:1)
         target_col = j + rand(-1:1)
         if target_row > length(landscape[1:end,1])
-            target_row = 1
+            target_row == 1
         elseif target_row < 1
-            target_row = length(landscape[1:end,1])
+            target_row == length(landscape[1:end,1])
         end
         if target_col > length(landscape[1,1:end])
-            target_col = 1
+            target_col == 1
         elseif target_col < 1
-            target_col = length(landscape[1,1:end])
+            target_col == length(landscape[1,1:end])
         end
 
+        #if target_row > length(landscape[1:end,1]) || target_row < 1 || target_col > length(landscape[1,1:end]) || target_col < 1
+        #    outofbounds = true
+            #println("Individual went out of bounds")
+        #end
     end
+    #if target_row > length(landscape[1:end,1]) || target_row < 1 || target_col > length(landscape[1,1:end]) || target_col < 1
+    #    outofbounds = true
+        #println("Individual went out of bounds")
+    #end
     return target_row, target_col, outofbounds
 end
 
@@ -581,14 +590,14 @@ function get_target_global(nrows::Int,ncols::Int,i::Int,j::Int)
         #println("Got same target as patch of origin. Rerolling...")
         target_row = rand(1:length(landscape[1:end,1]))
         target_col = rand(1:length(landscape[1,1:end]))
-        if target_row != i || target_col != j
+        #if target_row != i || target_col != j
             #println("New target patch @ row:$target_row, col:$target_col")
-        end
+        #end
     end
-    if target_row > length(landscape[1:end,1]) || target_row < 1 || target_col > length(landscape[1,1:end]) || target_col < 1
-        outofbounds = true
+    #if target_row > length(landscape[1:end,1]) || target_row < 1 || target_col > length(landscape[1,1:end]) || target_col < 1
+    #    outofbounds = true
         #println("Individual went out of bounds")
-    end
+    #end
     return target_row, target_col, outofbounds
 end
 

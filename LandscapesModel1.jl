@@ -149,7 +149,7 @@ function simulation_run()
             end
             if t==tmax
                 println("step =",step)
-            end   
+            end
             burnin = false
             #println("Beginning timestep $t.")
             #println("Starting dispersal routine.")
@@ -166,8 +166,22 @@ function simulation_run()
                 mutate(landscape,p_mut,mut_sd,mut_decay,step)
             end
             write_landscape_stats(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,par["autocor_temp"],par["autocor_env"],α,bmax)
-            if mod(t,50)==0 && t>=9900 || t==tmax
-                write_landscape_csv(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,par["autocor_temp"],par["autocor_env"],α)
+            if haskey(par,"output_interval")==true
+                if haskey(par,"output_start")==true
+                    if mod(step,par["output_interval"])==0 || step>=par["output_start"] || t==tmax
+                        write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                    end
+                end
+            elseif haskey(par,"output_interval")==false
+                if haskey(par,"output_start")==true
+                    if step==par["output_start"]
+                        write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                    end
+                end
+            else
+                if t==tmax
+                    write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                end
             end
             #println("End timestep $t.")
         end
@@ -177,10 +191,10 @@ function simulation_run()
                 #println("Trend time step: $c")
                 if par["burnin"] == true
                     step=tmax+bmax+c
-                    print("step=",step)
+                    #print("step=",step)
                 else
                     step=tmax+c
-                    print("step=",step)
+                    #print("step=",step)
                 end
                 #println("Beginning burn-in timestep $b.")
                 #println("Starting dispersal routine.")
@@ -198,8 +212,22 @@ function simulation_run()
                     mutate(landscape,p_mut,mut_sd,mut_decay,step)
                 end
                 write_landscape_stats(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α,bmax)
-                if mod(step,50)==0 || c==par["cmax"]
-                    write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                if haskey(par,"output_interval")==true
+                    if haskey(par,"output_start")==true
+                        if mod(step,par["output_interval"])==0 || step>=par["output_start"] || c==par["cmax"]
+                            write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                        end
+                    end
+                elseif haskey(par,"output_interval")==false
+                    if haskey(par,"output_start")==true
+                        if step==par["output_start"]
+                            write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                        end
+                    end
+                else
+                    if c==par["cmax"]
+                        write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                    end
                 end
                 #println("End timestep $t.")
             end
