@@ -536,19 +536,32 @@ function get_target_local(nrows::Int,ncols::Int,i::Int,j::Int)
     target_col = j + rand(-1:1)
     #println("Target row = $target_row")
     #println("Target col = $target_col")
+    if target_row > length(landscape[1:end,1])
+        target_row = 1
+    elseif target_row < 1
+        target_row = length(landscape[1:end,1])
+    end
+    if target_col > length(landscape[1,1:end])
+        target_col = 1
+    elseif target_col < 1
+        target_col = length(landscape[1,1:end])
+    end
     outofbounds = false
     while target_row == i && target_col == j
         #println("Got same target as patch of origin. Rerolling...")
         target_row = i + rand(-1:1)
         target_col = j + rand(-1:1)
-        if target_row > length(landscape[1:end,1]) || target_row < 1 || target_col > length(landscape[1,1:end]) || target_col < 1
-            outofbounds = true
-            #println("Individual went out of bounds")
+        if target_row > length(landscape[1:end,1])
+            target_row = 1
+        elseif target_row < 1
+            target_row = length(landscape[1:end,1])
         end
-    end
-    if target_row > length(landscape[1:end,1]) || target_row < 1 || target_col > length(landscape[1,1:end]) || target_col < 1
-        outofbounds = true
-        #println("Individual went out of bounds")
+        if target_col > length(landscape[1,1:end])
+            target_col = 1
+        elseif target_col < 1
+            target_col = length(landscape[1,1:end])
+        end
+
     end
     return target_row, target_col, outofbounds
 end
