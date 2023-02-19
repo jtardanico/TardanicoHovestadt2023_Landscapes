@@ -1,3 +1,4 @@
+
 #-----------------------------------------
 # Initialization and Data Input Functions
 #-----------------------------------------
@@ -168,26 +169,26 @@ function generate_climate_trend(nsteps::Int,mean,sd,trend_type::Int)
     #println("generate_climate_trend")
     #println("nsteps=$nsteps")
     if trend_type == 1
-        global trend = rand(Normal(mean,sd),nsteps) # Random variation, constant mean
-        global mean_trend = zeros(nsteps) # mean trend
+        trend = rand(Normal(mean,sd),nsteps) # Random variation, constant mean
+        mean_trend = zeros(nsteps) # mean trend
     elseif trend_type == 2
         t = Array{Float32,1}(undef,nsteps)
         for i in 1:nsteps
             t[i] = 0.025*i
         end
-        global trend = t
-        global mean_trend = t # mean trend
+        trend = t
+        mean_trend = t # mean trend
     elseif trend_type == 3
         t = Array{Float32,1}(undef,nsteps)
         for i in 1:nsteps
             t[i] = 0.025*i + rand(Normal(mean,sd))
             t_mean =  0.025*i # mean trend
         end
-        global trend = t # Random variation & rising mean
-        global mean_trend = t_mean
+        trend = t # Random variation & rising mean
+        mean_trend = t_mean
     elseif trend_type == 0
-        global trend = zeros(nsteps)
-        global mean_trend = zeros(nsteps)
+        trend = zeros(nsteps)
+        mean_trend = zeros(nsteps)
     else
         println("Invalid scenario. Valid scenarios are:")
         println("0: Constant mean, no random variation")
@@ -196,6 +197,7 @@ function generate_climate_trend(nsteps::Int,mean,sd,trend_type::Int)
         println("3: Increasing mean, constant variance")
         exit(code=0)
     end
+    return trend, mean_trend
 end
 
 # Generates a second climate trend
@@ -215,7 +217,9 @@ end
 # 'gradient' defines landscape gradient steepness
 function init_world(worldtempsource::String,worldenvsource::String,gradient,parameters::Dict)
     #println("init_world")
-    init_pop = parameters["initial_pop"]
+    if haskey(parameters,"initial_pop")==true
+        init_pop = parameters["initial_pop"]
+    end
     temperatures, environments = read_world_source(worldtempsource,worldenvsource)
     typeof(temperatures) # For debugging diagnostics
     typeof(environments)
@@ -228,28 +232,45 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient,para
     m_t, v_t = mean_and_var(temperatures)
     m_e, v_e = mean_and_var(environments)
     global landscape = Array{TPatch, 2}(undef, nrows, ncols)
-    for i in 1:nrows
-        for j in 1:ncols
-            row = i
-            col = j
-            patchpop = init_popgrad(init_pop,parameters,i,j)
+    if haskey(parameters,"initial_pop")==true
+        for i in 1:nrows
+            for j in 1:ncols
+                row = i
+                col = j
+                patchpop = init_popgrad(init_pop,parameters,i,j)
 
-            #if (i==1 ) && (j==1) # Use this to initialize a population in only one patch
-            #    patchpop = init_popgrad(init_pop,parameters,i,j)
-            #    println(typeof(patchpop))
-            #    len = length(patchpop[1][1:end,1])
-            #    wid = length(patchpop[1][1,1:end])
-            #    println("Initial patchpop dims: $len, $wid")
-            #else
-            #    patchpop = Array{Array{Float32,2},1}(undef,1)
-            #    patchpop[1] = Array{Float32,2}(undef,0,13)
-            #end
-            temp = temperatures[i,j]
-            habitat = environments[i,j]
-            precip = 0
-            patch = TPatch(row,col,patchpop,temp,precip,habitat)
-            #println("patch: $i, $j, ", length(patch.species[1][1:end,1]))
-            landscape[i,j] = patch
+                #if (i==1 ) && (j==1) # Use this to initialize a population in only one patch
+                #    patchpop = init_popgrad(init_pop,parameters,i,j)
+                #    println(typeof(patchpop))
+                #    len = length(patchpop[1][1:end,1])
+                #    wid = length(patchpop[1][1,1:end])
+                #    println("Initial patchpop dims: $len, $wid")
+                #else
+                #    patchpop = Array{Array{Float32,2},1}(undef,1)
+                #    patchpop[1] = Array{Float32,2}(undef,0,13)
+                #end
+                temp = temperatures[i,j]
+                habitat = environments[i,j]
+                precip = 0
+                patch = TPatch(row,col,patchpop,temp,precip,habitat)
+                #println("patch: $i, $j, ", length(patch.species[1][1:end,1]))
+                landscape[i,j] = patch
+            end
+        end
+    else
+        for i in 1:nrows
+            for j in 1:ncols
+                row = i
+                col = j
+                patchpop = Array{Array{Float32,2},1}(undef,1)
+                patchpop[1] = Array{Float32,2}(undef,0,13)
+                temp = temperatures[i,j]
+                habitat = environments[i,j]
+                precip = 0
+                patch = TPatch(row,col,patchpop,temp,precip,habitat)
+                #println("patch: $i, $j, ", length(patch.species[1][1:end,1]))
+                landscape[i,j] = patch
+            end
         end
     end
 end

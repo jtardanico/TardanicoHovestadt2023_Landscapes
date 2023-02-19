@@ -132,7 +132,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                     if sum(surviving) > 0 # Check number of survivors
                         #println("2a3")
                         #println("Larger than zero")
-                        newgen = Array{Float32,2}(undef,sum(surviving),length(landscape[i,j].species[p][1,1:end])) # Creates an array of length sum(offspring) + new immigrants with data for species p & width of n traits
+                        newgen = Array{Float32,2}(undef,sum(surviving),size(landscape[i,j].species[p],2)) # Creates an array of length sum(offspring) + new immigrants with data for species p & width of n traits
                         ind = 1 # Keeps count of individual offspring added to newgen array
                         for q in 1:length(surviving) # Goes down index of 'surviving'
                             #println("2a3a1")
@@ -154,7 +154,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                         #else #----------------------------------------------------------------------------------------------------------------------------------------------------
                         #    println("2a3b")
                         #    println("No survivors")
-                        #    newgen = Array{Float32,2}(undef,sum(surviving),length(landscape[i,j].species[p][1,1:end]))
+                        #    newgen = Array{Float32,2}(undef,sum(surviving),size(landscape[i,j].species[p],2))
                         #    ind = 1 # Keeps count of individual offspring added to newgen array
                         #    for q in 1:length(surviving) # Goes down index of 'surviving'
                         #        println("2a3b1")
@@ -174,7 +174,7 @@ function demographics(landscape::Array{TPatch, 2},niche_tradeoff, trend, grad, K
                         #global landscape[i,j].species[p] = copy(newgen)
                     else
                         #println("2a5")
-                        array = Array{Float32,2}(undef,0,length(landscape[i,j].species[p][1,1:end])) # If total offspring is 0, replaces landscape[i,j].species[p]
+                        array = Array{Float32,2}(undef,0,size(landscape[i,j].species[p],2)) # If total offspring is 0, replaces landscape[i,j].species[p]
                         global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
                         #println("Set length of landscape[$i,$j].species[$p] to zero")
                     end # End if-else statement
@@ -252,7 +252,7 @@ function demographics_immi(landscape::Array{TPatch, 2},par::Dict,niche_tradeoff,
                         immigrants = rand(Poisson(e_immi))
                         #println("immigrants: $immigrants")
                         lenx = sum(surviving) + immigrants # make e_immi a dictionary parameter
-                        newgen = Array{Float32,2}(undef,lenx,length(landscape[i,j].species[p][1,1:end])) # Creates an array of length sum(offspring) + new immigrants with data for species p & width of n traits
+                        newgen = Array{Float32,2}(undef,lenx,size(landscape[i,j].species[p],2)) # Creates an array of length sum(offspring) + new immigrants with data for species p & width of n traits
                         ind = 1 # Keeps count of individual offspring added to newgen array
                         for q in 1:length(surviving) # Goes down index of 'surviving'
                             #println("2a3a1")
@@ -272,7 +272,7 @@ function demographics_immi(landscape::Array{TPatch, 2},par::Dict,niche_tradeoff,
                             #println("2a3a2")
                             ind = q + sum(surviving) # Determines where in the array immigrants get put.
                                                      # q + sum(surviving) ensures they do not overwrite existing organisms.
-                            immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
+                            immigrant = Array{Float32,1}(undef,size(landscape[i,j].species[p],2))
                             ID = i              # Trait 1: Species ID number
                             T_opt = rand(Normal(0,1)) * par["grad"] + trend #8+22 # Trait 2: Temperature optimum
                             T_sd = rand(LogNormal(par["tsd_µ"],par["tsd_σ"]))    # Trait 3: Temperature tolerance
@@ -300,12 +300,12 @@ function demographics_immi(landscape::Array{TPatch, 2},par::Dict,niche_tradeoff,
                         #println("immigrants: $immigrants")
                         if immigrants > 0
                             #println("Immigrants > 0")
-                            newgen = Array{Float32,2}(undef,immigrants,length(landscape[i,j].species[p][1,1:end])) # newgen has dimensions n_immigrants by n_traits
+                            newgen = Array{Float32,2}(undef,immigrants,size(landscape[i,j].species[p],2)) # newgen has dimensions n_immigrants by n_traits
                             for q in 1:immigrants # Begin loop over immigrants
                                 #println("2a5a2")
                                 ind = q + sum(surviving) # Determines where in the array immigrants get put.
                                                          # q + sum(surviving) ensures they do not overwrite existing organisms.
-                                immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
+                                immigrant = Array{Float32,1}(undef,size(landscape[i,j].species[p],2))
                                 ID = i              # Trait 1: Species ID number
                                 T_opt = rand(Normal(0,1)) * par["grad"] + trend #8+22 # Trait 2: Temperature optimum
                                 T_sd = rand(LogNormal(par["tsd_µ"],par["tsd_σ"]))    # Trait 3: Temperature tolerance
@@ -328,7 +328,7 @@ function demographics_immi(landscape::Array{TPatch, 2},par::Dict,niche_tradeoff,
                             end # End loop over immigrants
                         global landscape[i,j].species[p] = copy(newgen)
                         else # If there are no immigrants
-                            array = Array{Float32,2}(undef,0,length(landscape[i,j].species[p][1,1:end])) # If total offspring is 0, replaces landscape[i,j].species[p]
+                            array = Array{Float32,2}(undef,0,size(landscape[i,j].species[p],2)) # If total offspring is 0, replaces landscape[i,j].species[p]
                             global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
                             #println("Set length of landscape[$i,$j].species[$p] to zero")
                         end
@@ -337,15 +337,16 @@ function demographics_immi(landscape::Array{TPatch, 2},par::Dict,niche_tradeoff,
                     #println("2b")
                     #println("No individuals of species $p present")
                     immigrants = rand(Poisson(e_immi)) # Check if there are any immigrants
+                    surviving = 0
                     #println("immigrants: $immigrants")
                     if immigrants > 0
                         #println("2b1")
-                        newgen = Array{Float32,2}(undef,immigrants,length(landscape[i,j].species[p][1,1:end])) # newgen has dimensions n_immigrants by n_traits
+                        newgen = Array{Float32,2}(undef,immigrants,size(landscape[i,j].species[p],2)) # newgen has dimensions n_immigrants by n_traits
                         for q in 1:immigrants # Begin loop over immigrants
                             #println("2a3a2")
                             ind = q + sum(surviving) # Determines where in the array immigrants get put.
                                                      # q + sum(surviving) ensures they do not overwrite existing organisms.
-                            immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
+                            immigrant = Array{Float32,1}(undef,size(landscape[i,j].species[p],2))
                             ID = i              # Trait 1: Species ID number
                             T_opt = rand(Normal(0,1)) * par["grad"] + trend #8+22 # Trait 2: Temperature optimum
                             T_sd = rand(LogNormal(par["tsd_µ"],par["tsd_σ"]))    # Trait 3: Temperature tolerance
@@ -442,7 +443,7 @@ function demographics_old(landscape::Array{TPatch, 2},niche_tradeoff, trend, gra
                             immigrants = rand(Poisson(e_immi))
                             #println("immigrants: $immigrants")
                             lenx = sum(surviving) + immigrants # make e_immi a dictionary parameter
-                            newgen = Array{Float32,2}(undef,lenx,length(landscape[i,j].species[p][1,1:end])) # Creates an array of length sum(offspring) + new immigrants with data for species p & width of n traits
+                            newgen = Array{Float32,2}(undef,lenx,size(landscape[i,j].species[p],2)) # Creates an array of length sum(offspring) + new immigrants with data for species p & width of n traits
                             #println("length newgen = ",length(newgen[1:end,1]))
                             ind = 1 # Keeps count of individual offspring added to newgen array
                             for q in 1:length(surviving) # Goes down index of 'surviving'
@@ -464,7 +465,7 @@ function demographics_old(landscape::Array{TPatch, 2},niche_tradeoff, trend, gra
                                 println("2a3a2")
                                 ind = q + sum(surviving) # Determines where in the array immigrants get put.
                                                          # q + sum(surviving) ensures they do not overwrite existing organisms.
-                                immigrant = Array{Float32,1}(undef,length(landscape[i,j].species[p][1,1:end]))
+                                immigrant = Array{Float32,1}(undef,size(landscape[i,j].species[p],2))
                                 ID = i              # Trait 1: Species ID number
                                 T_opt = (rand()*grad*1.5)-((grad*1.5)/2)+trend #8+22 # Trait 2: Temperature optimum
                                 T_sd = rand(LogNormal(0,1))    # Trait 3: Temperature tolerance
@@ -484,7 +485,7 @@ function demographics_old(landscape::Array{TPatch, 2},niche_tradeoff, trend, gra
                         else
                             println("2a3b")
                             println("No survivors")
-                            newgen = Array{Float32,2}(undef,sum(surviving),length(landscape[i,j].species[p][1,1:end]))
+                            newgen = Array{Float32,2}(undef,sum(surviving),size(landscape[i,j].species[p],2))
                             ind = 1 # Keeps count of individual offspring added to newgen array
                             for q in 1:length(surviving) # Goes down index of 'surviving'
                                 println("2a3b1")
@@ -504,7 +505,7 @@ function demographics_old(landscape::Array{TPatch, 2},niche_tradeoff, trend, gra
                         global landscape[i,j].species[p] = copy(newgen)
                     else
                         println("2a5")
-                        array = Array{Float32,2}(undef,0,length(landscape[i,j].species[p][1,1:end])) # If total offspring is 0, replaces landscape[i,j].species[p]
+                        array = Array{Float32,2}(undef,0,size(landscape[i,j].species[p],2)) # If total offspring is 0, replaces landscape[i,j].species[p]
                         global landscape[i,j].species[p] = copy(array)                               # with a 0 by 8 array.
                         #println("Set length of landscape[$i,$j].species[$p] to zero")
                     end # End if-else statement

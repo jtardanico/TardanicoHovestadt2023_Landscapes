@@ -1,4 +1,3 @@
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Landscapes Model 1
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -100,11 +99,11 @@ function simulation_run()
     println(dir)
     filename,tempsource,envsource = set_filename(ArgDict,par,scen,grad)
     #Random.seed!(123)
-    for rep in 1:rmax
+    for rep in 1:par["rmax"]
         println("Replicate $rep")
         println("Initializing world.")
         init_world(tempsource,envsource,grad,par)
-        generate_climate_trend(tmax,0,1,scen)
+        trend, mean_trend = generate_climate_trend(tmax,0,1,scen)
         if haskey(par,"cmax")==true
             trend2, mean_trend2 = generate_climate_trend2(par["cmax"],0,1,par["c_change"])
         end
@@ -115,8 +114,8 @@ function simulation_run()
         write_landscape_csv(landscape,dir,filename,rep,-1,scen,0,0,grad,par["autocor_temp"],par["autocor_env"],α)
         if par["burnin"] == true
             println("Starting burn-in period.")
-            for b in 1:bmax
-                if b==bmax
+            for b in 1:par["bmax"]
+                if b==par["bmax"]
                     println("step =",step)
                 end
                 #println("burn-in time step: $b")
@@ -133,21 +132,25 @@ function simulation_run()
                     mutate(landscape,p_mut,mut_sd,mut_decay,b)
                 end
                 write_landscape_stats(landscape,dir,filename,rep,b,scen,0,0,grad,par["autocor_temp"],par["autocor_env"],α,bmax)
-                if mod(b,50)==true || b==bmax
-                    write_landscape_csv(landscape,dir,filename,rep,b,scen,0,0,grad,par["autocor_temp"],par["autocor_env"],α)
+                if haskey(par,"output_burnin")==true
+                    if par["output_burnin"]==true
+                        if b==par["bmax"]
+                            write_landscape_csv(landscape,dir,filename,rep,b,scen,0,0,grad,par["autocor_temp"],par["autocor_env"],α)
+                        end
+                    end
                 end
                 #println("End timestep $t.")
             end
         end
         #write_landscape_csv(landscape,dir,filename,rep,0,scen,0,grad,par["autocor_t"],par["autocor_e"],α)
         println("Starting main simulation")
-        for t in 1:tmax
+        for t in 1:par["tmax"]
             if par["burnin"] == true
-                step=t+bmax
+                step=t+par["bmax"]
             else
                 step=t
             end
-            if t==tmax
+            if t==par["tmax"]
                 println("step =",step)
             end
             burnin = false
@@ -166,23 +169,38 @@ function simulation_run()
                 mutate(landscape,p_mut,mut_sd,mut_decay,step)
             end
             write_landscape_stats(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,par["autocor_temp"],par["autocor_env"],α,bmax)
-            if haskey(par,"output_interval")==true
-                if haskey(par,"output_start")==true
-                    if mod(step,par["output_interval"])==0 || step>=par["output_start"] || t==tmax
-                        write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+            if haskey(par,"output_time")==true
+                if haskey(par,"output_interval")==true
+                    if mod((step-par["output_time"]),par["output_interval"])==0 || step==par["output_time"]
+                        write_landscape_csv(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,par["autocor_temp"],par["autocor_env"],α)
                     end
-                end
-            elseif haskey(par,"output_interval")==false
-                if haskey(par,"output_start")==true
-                    if step==par["output_start"]
-                        write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                else
+                    if step==par["output_time"]
+                        write_landscape_csv(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,par["autocor_temp"],par["autocor_env"],α)
                     end
                 end
             else
-                if t==tmax
-                    write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                if step==par["tmax"]
+                    write_landscape_csv(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,par["autocor_temp"],par["autocor_env"],α)
                 end
             end
+            #if haskey(par,"output_interval")==true
+            #    if haskey(par,"output_start")==true
+            #        if mod(step,par["output_interval"])==0 || step>=par["output_start"] || t==tmax
+            #            write_landscape_csv(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,par["autocor_temp"],par["autocor_env"],α)
+            #        end
+            #    end
+            #elseif haskey(par,"output_interval")==false
+            #    if haskey(par,"output_start")==true
+            #        if step==par["output_start"]
+            #            write_landscape_csv(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,par["autocor_temp"],par["autocor_env"],α)
+            #        end
+            #    end
+            #else
+            #    if t==tmax
+            #        write_landscape_csv(landscape,dir,filename,rep,step,scen,trend[t],mean_trend[t],grad,par["autocor_temp"],par["autocor_env"],α)
+            #    end
+            #end
             #println("End timestep $t.")
         end
         if haskey(par,"cmax")==true
@@ -190,10 +208,12 @@ function simulation_run()
             for c in 1:par["cmax"]
                 #println("Trend time step: $c")
                 if par["burnin"] == true
-                    step=tmax+bmax+c
+                    step=par["tmax"]+par["bmax"]+c
+                    tmax2=par["tmax"]+par["bmax"]+par["cmax"]
                     #print("step=",step)
                 else
-                    step=tmax+c
+                    step=par["tmax"]+c
+                    tmax2=par["tmax"]+par["cmax"]
                     #print("step=",step)
                 end
                 #println("Beginning burn-in timestep $b.")
@@ -212,23 +232,40 @@ function simulation_run()
                     mutate(landscape,p_mut,mut_sd,mut_decay,step)
                 end
                 write_landscape_stats(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α,bmax)
-                if haskey(par,"output_interval")==true
-                    if haskey(par,"output_start")==true
-                        if mod(step,par["output_interval"])==0 || step>=par["output_start"] || c==par["cmax"]
+
+                if haskey(par,"output_time")==true
+                    if haskey(par,"output_interval")==true
+                        if mod((step-par["output_time"]),par["output_interval"])==0 || step==par["output_time"]
                             write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
                         end
-                    end
-                elseif haskey(par,"output_interval")==false
-                    if haskey(par,"output_start")==true
-                        if step==par["output_start"]
+                    else
+                        if step==par["output_time"]
                             write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
                         end
                     end
                 else
-                    if c==par["cmax"]
+                    if step==tmax2
                         write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
                     end
                 end
+
+                #if haskey(par,"output_interval")==true
+                #    if haskey(par,"output_start")==true
+                #        if mod(step,par["output_interval"])==0 || step>=par["output_start"] || c==par["cmax"]
+                #            write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                #        end
+                #    end
+                #elseif haskey(par,"output_interval")==false
+                #    if haskey(par,"output_start")==true
+                #        if step==par["output_start"]
+                #            write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                #        end
+                #    end
+                #else
+                #    if c==par["cmax"]
+                #        write_landscape_csv(landscape,dir,filename,rep,step,scen,trend2[c],mean_trend2[c],grad,par["autocor_temp"],par["autocor_env"],α)
+                #    end
+                #end
                 #println("End timestep $t.")
             end
         end
