@@ -1,6 +1,6 @@
 # Data file merge script
 
-# For use merging simulation replicate output files.
+# For use combining simulation replicate output files.into a single data file
 # Group files by simulation parameters.
 
 println("Loading packages")
@@ -14,6 +14,7 @@ using ArgParse
 # Function definitions
 #------------------------------------
 
+# Read in read_arguments from the shell script
 function read_args()
     s=ArgParseSettings()
     @add_arg_table s begin
@@ -23,6 +24,7 @@ function read_args()
     return parse_args(s)
 end
 
+# Outputs diagnostic info to console
 function df_info(data::DataFrame)
     println("Data file dimensions")
     println("---------------------")
@@ -45,6 +47,7 @@ function df_info(data::DataFrame)
     println("")
 end
 
+# Gets the replicate number of a data file
 function extract_repli_num(filename::String,regex::Regex)
     m = match(regex,filename)
     y = m.match

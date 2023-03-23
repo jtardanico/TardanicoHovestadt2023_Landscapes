@@ -9,7 +9,7 @@ function expected_fert(T_opt,T_sd,H_opt,H_sd,Fert_max, temp_t, habitat, α_t, α
     return e_fert
 end
 
-# Calculates expected offspring. For use in calculating landscape average fitness (see write_landscape_stats)
+# Calculates expected offspring. For use in calculating landscape average fitness (see write_landscape_stats in Output.jl)
 function expected_fert2(T_opt,T_sd,H_opt,H_sd,temp_t, habitat, α_t, α_h, trend)
     #println("T_opt",size(T_opt))
     #println("T_sd",size(T_sd))
@@ -34,7 +34,7 @@ function expected_mort(Fert_max, offspring, k)
     return e_mort
 end
 
-# Function for calculating how stressful the environment of a patch is
+# Function for calculating how stressful the environment of a patch is (Organism fitness)
 function stress(T_opt::Float32,T_sd::Float32,H_opt::Float32,H_sd::Float32,temp_t::Float32, habitat::Float32,trend::Float32)
     temp = temp_t + trend
     S_T = exp(-(temp-T_opt)^2/(2*T_sd^2))
@@ -43,7 +43,7 @@ function stress(T_opt::Float32,T_sd::Float32,H_opt::Float32,H_sd::Float32,temp_t
 end
 
 
-# Determines carry capacity for a species; may be removed/replaced later.
+# DEFUNCT: Determines carry capacity for a species; may be removed/replaced later.
 function carry_capacity(k_0, S_T, S_H)
     K = round(k_0*S_T*S_H)  #K = round(k_0*S_T*S_H)
     return K
@@ -61,12 +61,14 @@ function weightedmean(means,weights)
     return wm
 end
 
+# Calculates Shannon-Wiener diversity index
 function shannon(i)
     p = i ./ sum(i[1:length(i)])
     h = -sum(p.*log.(p))
     return h
 end
 
+# Calculates Simpson diversity index
 function simpson(i)
     p = i ./ sum(i[1:length(i)])
     λ =  sum(p.^2)

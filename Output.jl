@@ -2,6 +2,7 @@
 # Data Output Functions
 #-------------------------
 
+# Sets the file naming scheme for output files
 function set_filename(argumentsdict::Dict, par::Dict,clim,grad)
     filename = string("S", par["scen"])
     println(filename)
@@ -76,6 +77,10 @@ function popcount(landscape)
     return x
 end
 
+# Calculates landscape wide arithmetic mean and variance of fitness and adaptation metrics:
+# Fitness (expected fertility) for T and H separately (ft,fh)
+# Overall fitness (expected fertility) (fit)
+# Difference between current patch T and organism T_opt
 function fitnessmeans(landscape,trend,meantrend,α)
     obs = 0
     sumft = 0
@@ -206,7 +211,7 @@ function traitmeans(landscape)
     return meantopt,meantsd,meanhopt,meanhsd,meandisp,meandispg,vartopt,vartsd,varhopt,varhsd,vardisp,vardispg
 end
 
-# Calculates species richness for a single patch
+# Calculates landscape lineage (species) richness
 function landscape_div(landscape::Array{TPatch,2})
     lineages = Array{String,1}(undef,0)
     for i in 1:length(landscape[1:end,1])
@@ -236,128 +241,8 @@ function landscape_div(landscape::Array{TPatch,2})
     end
 end
 
-# Counts population for each species in each patch and outputs them to an array with dimensions
-# rows by cols by n_species.
-function patch_spp_pops(landscape::Array{TPatch,2},n_species)
-    rows = length(landscape[1:end,1])
-    cols = length(landscape[1,1:end])
-    patch_pops = Array{Array{Int,2},1}(undef, n_species)
-    for p in 1:n_species
-        pops = Array{Int,2}(undef,rows,cols)
-        for i in 1:rows
-            for j in 1:cols
-                pops[i,j] = length(landscape[i,j].species[p][1:end,1])
-            end
-        end
-        patch_pops[p] = pops
-    end
-    return patch_pops
-end
 
-# Calculates trait value means for each patch in the landscape and outputs a 3d array with dimensions
-# rows by cols by n_traits.
-# Note: This function could be more elegantly written. Consider rewriting this function.
-function trait_analysis(landscape::Array{TPatch,2})
-    #println("Trait Analysis")
-    rows = length(landscape[1:end,1])
-    #println("rows = $rows")
-    cols = length(landscape[1,1:end])
-    #println("cols = $cols")
-    n_species = length(species_list[1:end,1])
-    n_traits = length(species_list[1,2:8]) # 7 traits of interest,
-    global trait_means = Array{Array{Float32,2}}(undef,n_traits)
-    for k in 1:n_traits
-        #println("trait loop = $k")
-        means = Array{Float32,1}(undef,n_species)
-        weights = Array{Int,1}(undef,n_species)
-        mean_traits_values = Array{Float32,2}(undef,rows,cols)
-        for i in 1:rows
-            #println("Row = $i")
-            for j in 1:cols
-                if n_species > 1
-                    #println("Col = $j")
-                    for p in 1:n_species
-                        #println("Species = $p")
-                        weights[p] = length(landscape[i,j].species[p][1:end,1])
-                        #println("Weight = $(length(landscape[i,j].species[p][1:end,1]))")
-                        if length(landscape[i,j].species[p][1:end,1]) > 0
-                            means[p] = mean(landscape[i,j].species[p][1:end,k+1])
-                            #println("Mean = $(means[p])")
-                        else
-                            means[p] = 0
-                            #println("Mean = $(means[p])")
-                        end
-                    end # End species loop
-                end
-                #println("Weighted mean = $(weightedmean(means,weights))")
-                if n_species > 1
-                    mean_traits_values[i,j] = weightedmean(means,weights)
-                else
-                    mean_traits_values[i,j] = mean(landscape[i,j].species[1][1:end,k+1])
-                end
-            end # End col loop
-        end # End row loop
-        global trait_means[k] = mean_traits_values
-    end # End traits loop
-end
-
-function diversity_analysis(landscape::Array{TPatch,2})
-    rows = length(landscape[1:end,1])
-    cols = length(landscape[1,1:end])
-    n_species = length(species_list[1:end,1])
-    global pops = Array{Array{Int,2},1}(undef, n_species)
-    global richness = Array{Int,2}(undef,rows,cols)
-    #global mean_traits_values = Array{Array{Float32,2},1}(undef,6)
-    for i in 1:rows
-        for j in 1:cols
-            richness[i,j] = patch_species_richness(landscape,i,j)
-        end
-    end
-    global pops = patch_spp_pops(landscape,n_species)
-end
-
-function env_analysis(landscape::Array{TPatch,2},trend_t)
-    rows = length(landscape[1:end,1])
-    cols = length(landscape[1,1:end])
-    temperatures = Array{Float32,2}(undef,rows,cols)
-    habitat = Array{Float32,2}(undef,rows,cols)
-    for i in 1:rows
-        for j in 1:cols
-            temperatures[i,j] = landscape[i,j].temp_t + trend_t
-            habitat[i,j] = landscape[i,j].habitat
-        end
-    end
-    global temperatures = temperatures
-    global habitat = habitat
-end
-
-# Calculates unweighted mean stress for each patch
-function mean_stress(landscape::Array{TPatch,2}, trend)
-    rows = length(landscape[1:end,1])
-    cols = length(landscape[1,1:end])
-    n_species = length(species_list[1:end,1])
-    stress_t = Array{Float32,2}(undef,rows,cols) # Temperature stress
-    stress_h = Array{Float32,2}(undef,rows,cols) # Habitat stress
-    stress_o = Array{Float32,2}(undef,rows,cols) # Overall stress
-    for i in 1:rows
-        for j in 1:cols
-            for p in 1:n_species
-                S_T, S_H = stress.(landscape[i,j].species[p][1:end,2], # Calculating environmental stress for a species in a patch
-                           landscape[i,j].species[p][1:end,3],
-                           landscape[i,j].species[p][1:end,4],
-                           landscape[i,j].species[p][1:end,5],
-                           landscape[i,j].temp_t,
-                           landscape[i,j].habitat, trend)
-                S_O = (S_T .* S_H) # Calculate overall stress
-                stress_t[i,j] = mean(S_T)
-                stress_h[i,j] = mean(S_H)
-                stress_o[i,j] = mean(S_O)
-            end
-        end
-    end
-    return stress_t,stress_h,stress_o
-end
-
+# Writes landscape statistics for current timestep to a .csv file.
 function write_landscape_stats(landscape,directory,filename,replicate,timestep,s_clim,trend,mean_trend,grad,H_t,H_h,α,bmax)
     outputname = string(directory,filename,"trend.txt")
     col_names1 = ["Replicate" "Timestep" "Pop" "rich" "simp" "shan" "T_opt" "T_sd" "H_opt" "H_sd" "disp" "disp_g" "VT_opt" "VT_sd" "VH_opt" "VH_sd" "Vdisp" "Vdisp_g"]
@@ -376,11 +261,7 @@ function write_landscape_stats(landscape,directory,filename,replicate,timestep,s
     end
 end
 
-# Writes the full landscape data to a .csv file, including every individual in every patch.
-# Caution: Very large data file.
-
-# OPTIMIZATION: WRITE DATA TO ARRAY, THEN WRITE ARRAY TO FILE <---- DO THIS!!!
-
+# Writes the full landscape data to a .csv file, including the location, lineage and traits of every individual in every patch.
 function write_landscape_csv(landscape,directory,filename,replicate,timestep,s_clim,trend,mean_trend,grad,H_t,H_h,α)
     outputname = string(directory,filename,".txt")
     rows = length(landscape[1:end,1])

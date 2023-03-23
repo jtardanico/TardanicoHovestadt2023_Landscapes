@@ -7,7 +7,7 @@
 # Data Input Functions
 #-------------------------
 
-# Reads landscape temperature and environment data from files.
+# Reads landscape T and H data from files.
 # Called by: init_world
 function read_world_source(worldtempsource::String,worldenvsource::String)
     worldtempfile = readdlm(worldtempsource, ';')
@@ -29,11 +29,11 @@ function read_arguments()
         "--parasource","-n"
             help = "parameter dictionary source file"
         "--tempsource", "-t" # Name of temperature source file in the shell script
-            help = "Landscape temperature source file"
+            help = "Landscape T source file"
         "--envsource", "-e"
-            help = "Landscape environment source file"
+            help = "Landscape H source file"
         "--scenario", "-s"
-            help = "Climate scenario. See documentation"
+            help = "Climate scenario"
             arg_type = Int
             default = Int(0)
         "--burninperiod", "-b" # Burn in period before simulation start
@@ -64,6 +64,9 @@ function read_arguments()
             help = "Is the environment uniform throughout the landscape?"
             arg_type = Bool
             default = false
+        "--seed", "-r"
+            help = "A seed for the RNG. If specified in the shell, the program will always use this seed. Seed may alternatively be specified in parameters."
+            arg_type = Int64
         end
         return parse_args(s)
 end
@@ -134,7 +137,8 @@ function init_pops(n_pop::Int)
     end
 end
 
-# Initialized a population of individuals with randomized trait values
+# Initialized a population of individuals with randomized trait values. Function scales distribution of niche optima to the parameter "grad"
+#
 function init_popgrad(n_pop::Int,par::Dict,x::Int,y::Int)
     #println("init_popgrad")
     n_traits = 13
