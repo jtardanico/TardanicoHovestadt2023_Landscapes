@@ -75,28 +75,6 @@ end
 # Simulation Initialization Functions
 #--------------------------------------
 
-# Creates an array with dimentions n_species and n_traits which acts as a master list of all species in the simulation
-function init_spp(n_species::Int)
-    #println("Initializing species master list...")
-    n_traits = 13
-    global species_list = Array{Any,2}(undef,n_species,n_traits)
-    for i in 1:n_species
-        ID = i              # Trait 1: Species ID number
-        T_opt = rand(Normal(mean,sd))*20+10 #8+22 # Trait 2: Temperature optimum
-        T_sd = 2            # Trait 3: Temperature tolerance
-        H_opt = rand()      # Trait 4: Habitat optimum
-        H_sd = 0.2          # Trait 5: Habitat tolerance
-        Disp_l = 0.1        # Trait 6: Local dispersal probability
-        Disp_g = 0.01       # Trait 7: Global dispersal probability
-        Fert_max = 10       # Trait 8: Maximum number of offspring
-        dispersed = false   # Trait 9: Whether or not individual has already dispersed
-        origin_patch_x = "x"
-        origin_patch_y = "y"
-        origin_time = "timestep"
-        global species_list[i,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, origin_patch_x, origin_patch_y, origin_time]
-    end
-end
-
 # Creates a 1x9 array listing species traits. For use with function "simulation_run2"
 function init_spp2()
     #println("Initializing species master list...")
@@ -116,25 +94,6 @@ function init_spp2()
         origin_patch_y = "y"
         origin_time = "timestep"
         global species_list[1,1:end] = [ID, T_opt, T_sd, H_opt, H_sd, Disp_l, Disp_g, Fert_max, dispersed, lineage, origin_patch_x, origin_patch_y, origin_time]
-end
-
-# Initialization of species populations
-# Function creates a 1D array of 2D arrays of length n_species,
-# each with dimensions n_pop by n_traits.
-# Each row in a 2D array is an individual of a species; each 2D array is a population.
-function init_pops(n_pop::Int)
-    #println("Initializing species populations...")
-    n_species = length(species_list[1:end,1])
-    n_traits = length(species_list[1,1:end])
-    global species_0 = Array{Array{Float32,2},1}(undef, n_species)
-    for i in 1:n_species
-        n_pop = 10 # Placeholder value
-        population = Array{Float32,2}(undef,n_pop,n_traits)
-        for j in 1:n_pop
-            population[j,1:end] = species_list[i,1:end]
-        end
-        global species_0[i] = population
-    end
 end
 
 # Initialized a population of individuals with randomized trait values. Function scales distribution of niche optima to the parameter "grad"
@@ -275,25 +234,6 @@ function init_world(worldtempsource::String,worldenvsource::String,gradient,para
                 #println("patch: $i, $j, ", length(patch.species[1][1:end,1]))
                 landscape[i,j] = patch
             end
-        end
-    end
-end
-
-# Generates a landscape with dimensions dim_x and dim_y and adds cell index values
-# as well as temperature and precipitation values. For testing purposes.
-function generate_world(dim_x::Int,dim_y::Int)
-    #println("Creating landscape...")
-    global landscape = Array{TPatch, 2}(undef, dim_x,dim_y)
-    for i in 1:dim_x
-        for j in 1:dim_y
-            row = i
-            col = j
-            init_pops(10)          # Placeholder value; will change later
-            temp = gaussian_landscape(i,j,25,25,12)  # Placeholder function; Gaussian function of x and y dims w/ mean at i,j=50,50
-            precip = 500  # ^ Ditto
-            habitat = rand()
-            patch = TPatch(row,col,species_0,temp,precip,habitat)
-            landscape[i,j] = patch
         end
     end
 end

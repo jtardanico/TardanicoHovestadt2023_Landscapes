@@ -42,25 +42,6 @@ function stress(T_opt::Float32,T_sd::Float32,H_opt::Float32,H_sd::Float32,temp_t
     return S_T, S_H
 end
 
-
-# DEFUNCT: Determines carry capacity for a species; may be removed/replaced later.
-function carry_capacity(k_0, S_T, S_H)
-    K = round(k_0*S_T*S_H)  #K = round(k_0*S_T*S_H)
-    return K
-end
-
-# Function for creating an inverse gaussian distribution for landscape cell temperature across x and y dimensions
-function gaussian_landscape(row::Int,col::Int, max, mean, sd)
-    patch_temp = -max * exp(-(row-mean)^2/(2*sd^2)) * exp(-(col-mean)^2/(2*sd^2)) + (max/2)
-    return patch_temp
-end
-
-# Calculates weighted mean
-function weightedmean(means,weights)
-    wm = sum(means .* weights)/sum(weights)
-    return wm
-end
-
 # Calculates Shannon-Wiener diversity index
 function shannon(i)
     p = i ./ sum(i[1:length(i)])

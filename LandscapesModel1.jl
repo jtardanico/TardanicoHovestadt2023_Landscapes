@@ -309,6 +309,9 @@ end
 
     println("Loading PatchStatistics.jl")
     include("PatchStatistics.jl")
+    
+    println("Loading Misc.jl")
     include("Misc.jl")
+    
     simulation_run()
 end
