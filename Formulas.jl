@@ -6,8 +6,8 @@ module LandKlifFormulas
 export expected_fert, expected_mort, stress, carry_capacity, gaussian_landscape, weightedmean
 
 # Function for calculating the expected fertility (number of offspring) of an organism given its current fitness in its patch
-function expected_fert(T_opt,T_sd,H_opt,H_sd,Fert_max, temp_t, habitat, α_t, α_h, t_ref, trend)
-    temp = temp_t + t_ref + trend # Patch temperature
+function expected_fert(T_opt,T_sd,H_opt,H_sd,Fert_max, temp_t, habitat, α_t, α_h, trend)
+    temp = temp_t + trend # Patch temperature
     e_fert = Fert_max * exp(-(temp-T_opt)^2/(2*T_sd^2)) * exp(-(habitat-H_opt)^2/(2*H_sd^2)) * exp(-T_sd^2/2*α_t^2) * exp(-H_sd^2/2*α_h^2)
     return e_fert
 end
@@ -21,8 +21,8 @@ function expected_mort(Fert_max, offspring, k)
 end
 
 # Function for calculating how stressful the environment of a patch is
-function stress(T_opt,T_sd,H_opt,H_sd,temp_t, habitat,t_ref,trend)
-    temp = temp_t + t_ref + trend
+function stress(T_opt,T_sd,H_opt,H_sd,temp_t, habitat,trend)
+    temp = temp_t + trend
     S_T = exp(-(temp-T_opt)^2/(2*T_sd^2))
     S_H = exp(-(habitat-H_opt)^2/(2*H_sd^2))
     return S_T, S_H

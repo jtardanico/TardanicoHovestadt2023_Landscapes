@@ -9,7 +9,6 @@ Dict{String,Any}(
 "rmax" => 1, # Number of replicates. Will repeat simulation with the same landscape. Keep at 1 and do separate simulation runs.
 "cmax" => 200, # Number of timesteps in the climate change period
 "c_change" => 0.02, # Rate of change in T
-"T_ref" => 12.5, # This is unnecessary for the actual model. Remove this.
 "grad" => 0.1, # Gradient steepness
 "α" => 3, # Trade-off strength
 "scen" => 1, # Climate scenario. DEFUNCT PARAMETER. KEEP AT 1
